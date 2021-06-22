@@ -19,9 +19,9 @@ The NRL algorithm or extended derivatives of it was used in many products and pl
 
 References:
 
-[1] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Automatic Translation of English Text to Phonetics by Means of Letter-to-Sound Rules (NRL Report 7948). Naval Research Laboratory (NRL). Washington, D. C., 1976. https://apps.dtic.mil/sti/pdfs/ADA021929.pdf
-[2] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Letter-to-Sound Rules for Automatic Translation of English Text to Phonetics. IEEE Transactions on Acoustics, Speech, and Signal Processing ( Volume: 24, Issue: 6, Dec 1976) DOI:10.1109/TASSP.1976.1162873
-[3] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Corrections to "Letter-to-Sound Rules for Automatic Translation of English Text to Phonetics". IEEE Transactions on Acoustics, Speech, and Signal Processing ( Volume: 25, Issue: 2, Apr 1977) DOI:10.1109/TASSP.1977.1162926
+* [1] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Automatic Translation of English Text to Phonetics by Means of Letter-to-Sound Rules (NRL Report 7948). Naval Research Laboratory (NRL). Washington, D. C., 1976. https://apps.dtic.mil/sti/pdfs/ADA021929.pdf
+* [2] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Letter-to-Sound Rules for Automatic Translation of English Text to Phonetics. IEEE Transactions on Acoustics, Speech, and Signal Processing ( Volume: 24, Issue: 6, Dec 1976) DOI:10.1109/TASSP.1976.1162873
+* [3] Elovitz, H. S., Johnson, R. W., McHugh, A., Shore, J. E., Corrections to "Letter-to-Sound Rules for Automatic Translation of English Text to Phonetics". IEEE Transactions on Acoustics, Speech, and Signal Processing ( Volume: 25, Issue: 2, Apr 1977) DOI:10.1109/TASSP.1977.1162926
 
 Further references not yet indexed:
-McHugh, A. https://apps.dtic.mil/sti/pdfs/ADA031391.pdf - automatic stress/inflection rules
+* McHugh, A. https://apps.dtic.mil/sti/pdfs/ADA031391.pdf - automatic stress/inflection rules
