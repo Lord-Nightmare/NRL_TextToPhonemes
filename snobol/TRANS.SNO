@@ -1,0 +1,1540 @@
+****************************************************************
+*
+*
+*               *****  TRANS *****
+*
+*
+*  THIS IS THE TRANSLATION PROGRAM WHICH INPUTS
+*  ENGLISH TEXT AND TRANSLATES TO PHONEMES.
+*  IT IS WRITTEN IN SNOBOL FOR THE PDP10.
+*  IT WILL REDEFINE FILES ON ENCOUNTERING AN EOF
+*  OR ON SEEING A ### STARTING IN POSITION 1 OF THE INPUT STRING.
+*  IT ALSO PROVIDES THE FACILITY TO TRANSFER INTERMEDIATE AND FINAL
+*  OUTPUT RESULTS TO A PREDEFINED FILE OR TO THE TTY.
+*  OUTPUT TO A FILE IS IN A FORM COMPATIBLE WITH THE SPEECH LAB.
+*  IF THE CASSETTE IS SPECIFIED IT WILL OUTPUT IN A FORM COMPATIBLE
+*  TO THE SPEECH LAB.
+*
+****************************************************************
+*
+****************************************************************
+*
+*
+*       *****  ENGLISH TO IPA TRANSLATION RULES  *****
+*
+*
+*  IN THESE RULES SOME SPECIAL SYMBOLS SERVE AS KEYWORDS.
+*  THIS SPECIAL CONNOTATION HOLDS UNLESS THE SYMBOL
+*  APPEARS BETWEEN BRACKETS; THEN IT DENOTES ITSELF.
+*
+*       # = 1 OR MORE VOWELS
+*       * = 1 OR MORE CONSONANTS
+*       . = A VOICED CONSONANT
+*       $ = SINGLE CONSONANT FOLLOWED BY AN 'I' OR 'E'
+*       % = SUFFIX SUCH AS 'E','ES','ED','ER','ING','ELY'
+*       & = A SIBILANT
+*       @ = A CONSONANT AFTER WHICH LONG 'U' IS PRONOUNCED
+*               AS IN 'RULE', NOT 'MULE'
+*       ^ = A SINGLE CONSONANT
+*       + = A FRONT VOWEL: 'E','I','Y'
+*       : = 0 OR MORE CONSONANTS
+*
+*
+****************************************************************
+*
+*
+        PUNCTRULE.ENG =
++               "[ ]'=/ /\"
++               '[ - ]=/ /\'
++               '[ ]=/< >/\'
++               '[-]=/<->/\'
++               ". [' S]=/Z/\"
++               "#:.E [' S]=/Z/\"
++               ". [' S]=/Z/\"
++               "[' ]=/ /\"
++               '[,]=/<,>/\'
++               '[.]=/<.>/\'
++               '[?]=/<?>/\'
+*
+        ARULE.ENG =
++               '[A] =/AX/\'
++               ' [ARE] =/AA R/\'
++               ' [AR]O=/AA R/\'
++               '[AR]#=/EH R/\'
++               ' ^[AS]#=/EY S/\'
++               '[A]WA=/AX/\'
++               '[AW]=/AO/\'
++               ' :[ANY]=/EH N IY/\'
++               '[A]^+#=/EY/\'
++               '#:[ALLY]=/AX L IY/\'
++               ' [AL]#=/AX L/\'
++               '[AGAIN]=/AX G EH N/\'
++               '#:[AG]E=/IH JH/\'
++               '[A]^+:#=/AE/\'
++               ' :[A]^+ =/EY/\'
++               '[A]^%=/EY/\'
++               ' [ARR]=/AX R/\'
++               '[ARR]=/AE R/\'
++               ' :[AR] =/AA R/\'
++               '[AR] =/ER/\'
++               '[AR]=/AA R/\'
++               '[AIR]=/EH R/\'
++               '[AI]=/EY/\'
++               '[AY]=/EY/\'
++               '[AU]=/AO/\'
++               '#:[AL] =/AX L/\'
++               '#:[ALS] =/AX L Z/\'
++               '[ALK]=/AO K/\'
++               '[AL]^=/AO L/\'
++               ' :[ABLE]=/EY B AX L/\'
++               '[ABLE]=/AX B AX L/\'
++               '[ANG]+=/EY N JH/\'
++               '[A]=/AE/\'
+*
+        BRULE.ENG =
++               ' [BE]^#=/B IH/\'
++               '[BEING]=/B IY IH NX/\'
++               ' [BOTH] =/B OW TH/\'
++               ' [BUS]#=/B IH Z/\'
++               '[BUIL]=/B IH L/\'
++               '[B]=/B/\'
+*
+        CRULE.ENG =
++               ' [CH]^=/K/\'
++               '^E[CH]=/K/\'
++               '[CH]=/CH/\'
++               ' S[CI]#=/S AY/\'
++               '[CI]A=/SH/\'
++               '[CI]O=/SH/\'
++               '[CI]EN=/SH/\'
++               '[C]+=/S/\'
++               '[CK]=/K/\'
++               '[COM]%=/K AH M/\'
++               '[C]=/K/\'
+*
+        DRULE.ENG =
++               '#:[DED] =/D IH D/\'
++               '.E[D] =/D/\'
++               '#^:E[D] =/T/\'
++               ' [DE]^#=/D IH/\'
++               ' [DO] =/D UW/\'
++               ' [DOES]=/D AH Z/\'
++               ' [DOING]=/D UW IH NX/\'
++               ' [DOW]=/D AW/\'
++               '[DU]A=/JH UW/\'
++               '[D]=/D/\'
+*
+        ERULE.ENG =
++               '#:[E] =/ /\'
++               "' ^:[E] =/ /\"
++               ' :[E] =/IY/\'
++               '#[ED] =/D/\'
++               '#:[E]D =/ /\'
++               '[EV]ER=/EH V/\'
++               '[E]^%=/IY/\'
++               '[ERI]#=/IY R IY/\'
++               '[ERI]=/EH R IH/\'
++               '#:[ER]#=/ER/\'
++               '[ER]#=/EH R/\'
++               '[ER]=/ER/\'
++               ' [EVEN]=/IY V EH N/\'
++               '#:[E]W=/ /\'
++               '@[EW]=/UW/\'
++               '[EW]=/Y UW/\'
++               '[E]O=/IY/\'
++               '#:&[ES] =/IH Z/\'
++               '#:[E]S =/ /\'
++               '#:[ELY] =/L IY/\'
++               '#:[EMENT]=/M EH N T/\'
++               '[EFUL]=/F UH L/\'
++               '[EE]=/IY/\'
++               '[EARN]=/ER N/\'
++               ' [EAR]^=/ER/\'
++               '[EAD]=/EH D/\'
++               '#:[EA] =/IY AX/\'
++               '[EA]SU=/EH/\'
++               '[EA]=/IY/\'
++               '[EIGH]=/EY/\'
++               '[EI]=/IY/\'
++               ' [EYE]=/AY/\'
++               '[EY]=/IY/\'
++               '[EU]=/Y UW/\'
++               '[E]=/EH/\'
+*
+        FRULE.ENG =
++               '[FUL]=/F UH L/\'
++               '[F]=/F/\'
+*
+        GRULE.ENG =
++               '[GIV]=/G IH V/\'
++               ' [G]I^=/G/\'
++               '[GE]T=/G EH/\'
++               'SU[GGES]=/G JH EH S/\'
++               '[GG]=/G/\'
++               ' B#[G]=/G/\'
++               '[G]+=/JH/\'
++               '[GREAT]=/G R EY T/\'
++               '#[GH]=/ /\'
++               '[G]=/G/\'
+*
+        HRULE.ENG =
++               ' [HAV]=/HH AE V/\'
++               ' [HERE]=/HH IY R/\'
++               ' [HOUR]=/AW ER/\'
++               '[HOW]=/HH AW/\'
++               '[H]#=/HH/\'
++               '[H]=/ /\'
+*
+        IRULE.ENG =
++               ' [IN]=/IH N/\'
++               ' [I] =/AY/\'
++               '[IN]D=/AY N/\'
++               '[IER]=/IY ER/\'
++               '#:R[IED] =/IY D/\'
++               '[IED] =/AY D/\'
++               '[IEN]=/IY EH N/\'
++               '[IE]T=/AY EH/\'
++               ' :[I]%=/AY/\'
++               '[I]%=/IY/\'
++               '[IE]=/IY/\'
++               '[I]^+:#=/IH/\'
++               '[IR]#=/AY R/\'
++               '[IZ]%=/AY Z/\'
++               '[IS]%=/AY Z/\'
++               '[I]D%=/AY/\'
++               '+^[I]^+=/IH/\'
++               '[I]T%=/AY/\'
++               '#^:[I]^+=/IH/\'
++               '[I]^+=/AY/\'
++               '[IR]=/ER/\'
++               '[IGH]=/AY/\'
++               '[ILD]=/AY L D/\'
++               '[IGN] =/AY N/\'
++               '[IGN]^=/AY N/\'
++               '[IGN]%=/AY N/\'
++               '[IQUE]=/IY K/\'
++               '[I]=/IH/\'
+*
+        JRULE.ENG =
++               '[J]=/JH/\'
+*
+        KRULE.ENG =
++               ' [K]N=/ /\'
++               '[K]=/K/\'
+*
+        LRULE.ENG =
++               '[LO]C#=/L OW/\'
++               'L[L]=/ /\'
++               '#^:[L]%=/AX L/\'
++               '[LEAD]=/L IY D/\'
++               '[L]=/L/\'
+*
+        MRULE.ENG =
++               '[MOV]=/M UW V/\'
++               '[M]=/M/\'
+*
+        NRULE.ENG =
++               'E[NG]+=/N JH/\'
++               '[NG]R=/NX G/\'
++               '[NG]#=/NX G/\'
++               '[NGL]%=/NX G AX L/\'
++               '[NG]=/NX/\'
++               '[NK]=/NX K/\'
++               ' [NOW] =/N AW/\'
++               '[N]=/N/\'
+*
+        ORULE.ENG =
++               '[OF] =/AX V/\'
++               '[OROUGH]=/ER OW/\'
++               '#:[OR] =/ER/\'
++               '#:[ORS] =/ER Z/\'
++               '[OR]=/AO R/\'
++               ' [ONE]=/W AH N/\'
++               '[OW]=/OW/\'
++               ' [OVER]=/OW V ER/\'
++               '[OV]=/AH V/\'
++               '[O]^%=/OW/\'
++               '[O]^EN=/OW/\'
++               '[O]^I#=/OW/\'
++               '[OL]D=/OW L/\'
++               '[OUGHT]=/AO T/\'
++               '[OUGH]=/AH F/\'
++               ' [OU]=/AW/\'
++               'H[OU]S#=/AW/\'
++               '[OUS]=/AX S/\'
++               '[OUR]=/AO R/\'
++               '[OULD]=/UH D/\'
++               ' [OU]^L=/AH/\'
++               '[OUP]=/UW P/\'
++               '[OU]=/AW/\'
++               '[OY]=/OY/\'
++               '[OING]=/OW IH NX/\'
++               '[OI]=/OY/\'
++               '[OOR]=/AO R/\'
++               '[OOK]=/UH K/\'
++               '[OOD]=/UH D/\'
++               '[OO]=/UW/\'
++               '[O]E=/OW/\'
++               '[O] =/OW/\'
++               '[OA]=/OW/\'
++               ' [ONLY]=/OW N L IY/\'
++               ' [ONCE]=/W AH N S/\'
++               "[ON ' T]=/OW N T/\"
++               'C[O]N=/AA/\'
++               '[O]NG=/AO/\'
++               ' ^:[O]N=/AH/\'
++               'I[ON]=/AX N/\'
++               '#:[ON] =/AX N/\'
++               '#^[ON]=/AX N/\'
++               '[O]ST =/OW/\'
++               '[OF]^=/AO F/\'
++               '[OTHER]=/AH DH ER/\'
++               '[OSS] =/AO S/\'
++               '#^:[OM]=/AH M/\'
++               '[O]=/AA/\'
+*
+        PRULE.ENG =
++               '[PH]=/F/\'
++               '[PEOP]=/P IY P/\'
++               '[POW]=/P AW/\'
++               '[PUT] =/P UH T/\'
++               '[P]=/P/\'
+*
+        QRULE.ENG =
++               '[QUAR]=/K W AO R/\'
++               '[QU]=/K W/\'
++               '[Q]=/K/\'
+*
+        RRULE.ENG =
++               ' [RE]^#=/R IY/\'
++               '[R]=/R/\'
+*
+        SRULE.ENG =
++               '[SH]=/SH/\'
++               '#[SION]=/ZH AX N/\'
++               '[SOME]=/S AH M/\'
++               '#[SUR]$=/ZH ER/\'
++               '[SUR]#=/SH ER/\'
++               '#[SU]#-/ZH UW/\'
++               '#[SSU]#=/SH UW/\'
++               '#[SED] =/Z D/\'
++               '#[S]#/Z/\'
++               '[SAID]=/S EH D/\'
++               '^[SION]=/SH AX N/\'
++               '[S]S=/ /\'
++               '.[S] =/Z/\'
++               '#:.E[S] =/Z/\'
++               '#^:##[S] =/Z/\'
++               '#^:#[S] =/S/\'
++               'U[S] =/S/\'
++               ' :#[S] =/Z/\'
++               ' [SCH]=/S K/\'
++               '[S]C+=/ /\'
++               '#[SM]=/Z M/\'
++               "#[SN] '=/Z AX N/\"
++               '[S]=/S/\'
+*
+        TRULE.ENG =
++               ' [THE] =/DH AX/\'
++               '[TO] =/T UW/\'
++               '[THAT] =/DH AE T/\'
++               ' [THIS] =/DH IH S/\'
++               ' [THEY]=/DH EY/\'
++               ' [THERE]=/DH EH R/\'
++               '[THER]=/DH ER/\'
++               '[THEIR]=/DH EH R/\'
++               ' [THAN] =/DH AE N/\'
++               ' [THEM] =/DH EH M/\'
++               '[THESE] =/DH IY Z/\'
++               ' [THEN]=/DH EH N/\'
++               '[THROUGH]=/TH R UW/\'
++               '[THOSE]=/DH OW Z/\'
++               '[THOUGH] =/DH OW/\'
++               ' [THUS]=/DH AH S/\'
++               '[TH]=/TH/\'
++               '#:[TED] =/T IH D/\'
++               'S[TI]#N=/CH/\'
++               '[TI]O=/SH/\'
++               '[TI]A=/SH/\'
++               '[TIEN]=/SH AX N/\'
++               '[TUR]#=/CH ER/\'
++               '[TU]A=/CH UW/\'
++               ' [TWO]=/T UW/\'
++               '[T]=/T/\'
+*
+        URULE.ENG =
++               ' [UN]I=/Y UW N/\'
++               ' [UN]=/AH N/\'
++               ' [UPON]=/AX P AO N/\'
++               '@[UR]#=/UH R/\'
++               '[UR]#=/Y UH R/\'
++               '[UR]=/ER/\'
++               '[U]^ =/AH/\'
++               '[U]^^=/AH/\'
++               '[UY]=/AY/\'
++               ' G[U]#=/ /\'
++               'G[U]%=/ /\'
++               'G[U]#=/W/\'
++               '#N[U]=/Y UW/\'
++               '@[U]=/UW/\'
++               '[U]=/Y UW/\'
+*
+        VRULE.ENG =
++               '[VIEW]=/V Y UW/\'
++               '[V]=/V/\'
+*
+        WRULE.ENG =
++               ' [WERE]=/W ER/\'
++               '[WA]S=/W AA/\'
++               '[WA]T=/W AA/\'
++               '[WHERE]=/WH EH R/\'
++               '[WHAT]=/WH AA T/\'
++               '[WHOL]=/HH OW L/\'
++               '[WHO]=/HH UW/\'
++               '[WH]=/WH/\'
++               '[WAR]=/W AO R/\'
++               '[WOR]^=/W ER/\'
++               '[WR]=/R/\'
++               '[W]=/W/\'
+*
+        XRULE.ENG =
++               '[X]=/K S/\'
+*
+        YRULE.ENG =
++               '[YOUNG]=/Y AH NX/\'
++               ' [YOU]=/Y UW/\'
++               ' [YES]=/Y EH S/\'
++               ' [Y]=/Y/\'
++               '#^:[Y] =/IY/\'
++               '#^:[Y]I=/IY/\'
++               ' :[Y] =/AY/\'
++               ' :[Y]#=/AY/\'
++               ' :[Y]^+:#=/IH/\'
++               ' :[Y]^#=/AY/\'
++               '[Y]=/IH/\'
+*
+        ZRULE.ENG =
++               '[Z]=/Z/\'
+*
+        NUMBERRULE.ENG =
++               '[0]=/Z IH R OW/\'
++               '[1]=/W AH N/\'
++               '[2]=/T UW/\'
++               '[3]=/TH R IY/\'
++               '[4]=/F OW R/\'
++               '[5]=/F AY V/\'
++               '[6]=/S IH K S/\'
++               '[7]=/S EH V AX N/\'
++               '[8]=/EY T/\'
++               '[9]=/N AY N/\'
+*
+*
+****************************************************************
+*
+*
+*       *****  IPA TO VOTRAX TRANSLATIONS RULES  *****
+*
+*
+****************************************************************
+*
+*
+        IYRULE.IPA = '[IY]=[E]\'
+        IHRULE.IPA = '[IH]=[I]\'
+        EYRULE.IPA = 'L [EY] R=[UH3 A1 I3]\'
++               'L [EY]=[UH3 A1 AY\'
++               '[EY] R=[A I3]\'
++               '[EY]=[A AY]\'
+        EHRULE.IPA = 'L [EH]=[UH3 EH]\'
++               '[EH]=[EH]\'
+        AERULE.IPA = 'L [AE] R=[UH3 AE EH3]\'
++               'L [AE]=[UH3 AE]\'
++               '[AE] R=[AE1 EH3]\'
++               '[AE]=[AE]\'
+        AARULE.IPA = '[AA]=[AH]\'
+        AORULE.IPA = 'L [AO] R=[UH3 O]\'
++               'L [AO] ER=[UH3 AW O2]\'
++               'L [AO]=[UH3 AW]\'
++               '[AO] R=[O]\'
++               '[AO] ER=[AW O2]\'
++               '[AO]=[AW]\'
+        OWRULE.IPA = 'L [OW]=[UH3 O1 U1]\'
++               '[OW]=[O1 U1]\'
+        UHRULE.IPA = 'L [UH]=[UH3 OO]\'
++               '[UH]=[OO]\'
+        UWRULE.IPA = '[UW]=[IU U]\'
+        ERRULE.IPA = 'IY [ER]=[I3 ER]\'
++               'ER [ER]=[IU R]\'
++               'L [ER]=[UH3 ER]\'
++               '[ER L]=[UH3 ER]\'
++               'R [ER]=[UH3 R]\'
++               '[ER]=[ER]\'
+        AXRULE.IPA = '[AX]=[UH2]\'
+        AHRULE.IPA = '[AH]=[UH]\'
+        AYRULE.IPA = '[AY] L=[AH AY]\'
++               '[AY] R=[AH I3]\'
++               '[AY] ER=[AH AY]\'
++               '[AY]=[AH E1]\'
+        AWRULE.IPA = '[AW]=[AH O1]\'
+        OYRULE.IPA = 'L [OY] ER=[UH3 O1 AY]\'
++               'L [OY] L=[UH3 O1 AY]\'
++               'L [OY] R=[UH3 O1 EH2]\'
++               '[OY] ER=[O1 AY]\'
++               '[OY] L=[O1 AY]\'
++               '[OY] R=[O1 EH2]\'
++               '[OY]=[O1 E1]\'
+        YRULE.IPA = '[Y]=[Y1]\'
+        PRULE.IPA = '[P]=[P]\'
+        BRULE.IPA = '[B]=[B]\'
+        TRULE.IPA = '[T]=[T]\'
+        DRULE.IPA = '[D]=[D]\'
+        KRULE.IPA = '[K]=[K]\'
+        GRULE.IPA = '[G]=[G]\'
+        FRULE.IPA = '[F]=[F]\'
+        VRULE.IPA = '[V]=[V]\'
+        THRULE.IPA = '[TH]=[TH]\'
+        DHRULE.IPA = '[DH]=[THV]\'
+        SRULE.IPA = '[S]=[S]\'
+        ZRULE.IPA = '[Z]=[Z]\'
+        SHRULE.IPA = '[SH]=[SH]\'
+        ZHRULE.IPA = '[ZH]=[ZH]\'
+        HHRULE.IPA = '[HH]=[H]\'
+        CHRULE.IPA = '[CH]=[T CH]\'
+        JHRULE.IPA = '[JH]=[D J]\'
+        MRULE.IPA = '[M]=[M]\'
+        NRULE.IPA = '[N]=[N]\'
+        NXRULE.IPA = '[NX]=[NG]\'
+        LRULE.IPA = 'IY [L]=[I3 L]\'
++               'EY [L]=[I3 L]\'
++               'AY [L]=[I3 L]\'
++               'OY [L]=[I3 L]\'
++               'AE [L]=[UH3 L]\'
++               'AO [L]=[UH3 L]\'
++               'OW [L]=[UH3 L]\'
++               '[L]=[L]\'
+        WRULE.IPA = '[W]=[W]\'
+        WHRULE.IPA = '[WH]=[H W]\'
+        RRULE.IPA = '[R] L=[UH3 R]\'
++               '[R]=[R]\'
+        PUNCTRULE.IPA = '[< >]=[PA0]\'
++               '[<,>]=[PA1]\'
++               '[<.>]=[PA1 PA1]\'
++               '[<?>]=[PA1 PA1]\'
++               '[<->]=[PA1]\'
+*
+*
+****************************************************************
+*
+*
+*       *****  VOTRAX TO ASCII TRANSLATION RULES  *****
+*
+*
+****************************************************************
+*
+*
+        BLANK.CODE =
+        PA0.CODE = 'CH'
+        PA1.CODE = 'NK'
+*
+        A.CODE = '@J'
+        A1.CODE = 'FH'
+        A2.CODE = 'EH'
+        AE.CODE = 'NJ'
+        AE1.CODE = 'OJ'
+        AH.CODE = 'DJ'
+        AH1.CODE = 'EI'
+        AH2.CODE = 'HH'
+        AW.CODE = 'MK'
+        AW1.CODE = 'CI'
+        AW2.CODE = '@K'
+        AY.CODE = 'AJ'
+*
+        B.CODE = 'NH'
+*
+        CH.CODE = '@I'
+*
+        D.CODE = 'NI'
+        DT.CODE = 'DH'
+*
+        E.CODE = 'LJ'
+        E1.CODE = 'LK'
+        EH.CODE = 'KK'
+        EH1.CODE = 'BH'
+        EH2.CODE = 'AH'
+        EH3.CODE = '@H'
+        ER.CODE = 'JK'
+*
+        F.CODE = 'MI'
+*
+        G.CODE = 'LI'
+*
+        H.CODE = 'KI'
+*
+        I.CODE = 'GJ'
+        I1.CODE = 'KH'
+        I2.CODE = 'JH'
+        I3.CODE = 'IH'
+        IU.CODE = 'FK'
+*
+        J.CODE = 'JI'
+*
+        K.CODE = 'II'
+*
+        L.CODE = 'HI'
+*
+        M.CODE = 'LH'
+*
+        N.CODE = 'MH'
+        NG.CODE = 'DI'
+*
+        O.CODE = 'FJ'
+        O1.CODE = 'EK'
+        O2.CODE = 'DK'
+        OO.CODE = 'GI'
+        OO1.CODE = 'FI'
+*
+        P.CODE = 'EJ'
+*
+        R.CODE = 'KJ'
+*
+        S.CODE = 'OI'
+        SH.CODE = 'AI'
+*
+        T.CODE = 'JJ'
+        TH.CODE = 'IK'
+        THV.CODE = 'HK'
+*
+        U.CODE = 'HJ'
+        U1.CODE = 'GK'
+        UH.CODE = 'CK'
+        UH1.CODE = 'BK'
+        UH2.CODE = 'AK'
+        UH3.CODE = 'CJ'
+*
+        V.CODE = 'OH'
+*
+        W.CODE = 'MJ'
+*
+        Y.CODE = 'IJ'
+        Y1.CODE = 'BJ'
+*
+        Z.CODE = 'BI'
+        ZH.CODE = 'GH'
+*
+*
+****************************************************************
+*
+*
+*  DEFINE FUNCTIONS TO BE USED BY THE PROGRAM.
+*
+*
+*  SPECIALBREAK:  BREAKS APART SEGMENTS OF RULES WHICH
+*  CONTAIN SPECIAL CASE SYMBOLS
+*  VOWEL OR CONSONANT CLASSES, ETC.
+*
+        DEFINE('SPECIALBREAK(STR)')
+*
+*  TRANSLATETEXT:  CALLS TRANSLATE TO TRANSLATE THE TEXT.
+*  PARAMETER IS THE ENGLISH TEXT.
+*
+        DEFINE('TRANSLATETEXT(TEXT)')
+*
+*  TRANSLATE:  BREAKS OFF SEGMENTS OF A SET
+*  OF TRANSLATION RULES AND DETERMINES
+*  WHETHER THEY APPLY TO TEXT.
+*
+        DEFINE('TRANSLATE(BUF,GRAPHEME,QUAL)')
+*
+*  VOTRAXTRANSLATE:  TRANSLATES A STRING OF IPA SYMBOLS
+*  TO VOTRAX PHONETICS ACCORDING
+*  A SET OF PREDEFINED RULES.
+*
+        DEFINE('VOTRAXTRANSLATE(IPAPHONEMES)')
+*
+*  READTEXT:  INPUT THE COMPLETE TEXT TO BE TRANSLATED
+*
+        DEFINE('READTEXT()')
+*
+*  ASCII:  TRANSLATES THE VOTRAX MNEMONIC TO ASCII.
+*
+        DEFINE('ASCII(STRING)')
+*
+*  FILEDEFINE:  THIS IS THE MODULE WHICH ASKS THE USER
+*  THE NAMES OF THE INPUT FILE AND RESULT FILE
+*  AND THE STATISTICS FILE AND MAKES
+*  VARIABLE ASSIGNMENTS.
+*
+        DEFINE('FILEDEFINE()')
+*
+*  FILEOUT:  THIS ROUTINE OUTPUTS THE MNEMONIC VOTRAX
+*  CODE TO A FILE ASSOCIATED WITH TRANSTEXT.
+*
+        DEFINE('FILEOUT(BUF)')
+*
+*  CLI:  INPUTS THE TRANSLATION TO BE DONE
+*  BUILDS THE VARIABLE BRANCH IN IN AND OUT
+*
+        DEFINE('CLI()')
+*
+*
+*  MAIN PROGRAM CODE STARTS HERE
+*
+*
+*  SET TRIM VARIABLE SO TRAILING BLANKS ARE AUTOMATICALLY DELETED.
+*
+        &TRIM = 1
+*
+*  INIT SOME VARIABLES.
+*
+        INPUT('INPUT',2,80)
+        BLANK = ' '
+        DOUBLEBLANK = '  '
+        NULL =
+        ENDTEXT = '#'
+        ESCAPECODE = '###'
+        QUOTE = '"'
+        SINGLEQUOTE = "'"
+        SPECIALCASE = '#*.$%&@^+:'
+        ILLEGALPUNCT = '[]/\'
+        PUNCTSYMBOL = ' ,.?;:+*"$%&-<>!()='  SINGLEQUOTE
+        PUNCTSYMNOBLANK = ',.?;:+*"$%&=-<>!()' SINGLEQUOTE
+        NUMBER = '1234567890'
+        SET = 'ON'
+        UNSET = 'OFF'
+*
+*  DEFINE THE DELETE CHARACTER BY USING THE MACHINES ALPHABET.
+*  ALSO DEFINE RECORDON AND REORDOFF AND ENDOFMSG.
+*
+        &ALPHABET
++               TAB(18) LEN(1) . RECORDON
++               TAB(20) LEN(1) . RECORDOFF
++               TAB(94) LEN(1) . ENDOFMESSAGE
++               TAB(127) LEN(1) . DELETE
+*
+*  DEFINE SOME PATTERNS USED IN THE PROGRAM.
+*  THIS WAY SAVE THE BUILDING TIME DURING PROGRAM EXECUTION.
+*
+        ENDTEXTTEST = ENDTEXT RPOS(0)
+        RULEBREAKPATTERN = BREAK('\') . RULE  '\'
+        RULECHARSEP =  BREAK('[') . BACKCHAR  '['
++               BREAK(']') . CHARDEF  ']'
++               BREAK('=') . FORCHAR  '='
++               REM . PHONEME
+        VOWEL = 'AEIOUY'
+        CONSONANT = 'BCFDGHJKLMNPQRSTVWXZ'
+        VOICED = 'BDVGJLMNRWZ'
+        FRONT = 'EIY'
+        SUFFIX = 'ER ' ! 'E ' ! 'ES ' ! 'ED ' ! 'ING '
+        SIBILANT = ANY('SCGZXJ') ! 'CH' ! 'SH'
+        NONPAL = ANY('TSRDLZNJ') ! 'TH' ! 'CH' ! 'SH'
+        $'PATTERN#' = ANY(VOWEL) ARBNO(ANY(VOWEL))
+        $'PATTERN*' = ANY(CONSONANT) ARBNO(ANY(CONSONANT))
+        $'PATTERN.' = ANY(VOICED)
+        $'PATTERN$' = ANY(CONSONANT) ANY('EI')
+        $'PATTERN%' = SUFFIX
+        $'PATTERN&' = SIBILANT
+        $'PATTERN@' = NONPAL
+        $'PATTERN^' = ANY(CONSONANT)
+        $'PATTERN+' = ANY(FRONT)
+        $'PATTERN:' = ARBNO(ANY(CONSONANT))
+*
+        TTY = POS(0) 'TTY' RPOS(0)
+        CAS = POS(0) 'CAS' RPOS(0)
+        NOANS = POS(0)  ('N' ! 'NO')  RPOS(0)
+        YESANS = POS(0) ('Y' ! 'YE' ! 'YES')  RPOS(0)
+        ENGLISH = 'ENGLISH' ! 'ENGLIS' ! 'ENGLI' !
++               'ENGL' ! 'ENG' ! 'EN' ! 'E'
+        IPA = 'IPA' ! 'IP' ! 'I'
+        VOTRA = 'VOTRAX' ! 'VOTRA' ! 'VOTR' ! 'VOT' ! 'VO' ! 'V'
+        ASCI = 'ASCII' ! 'ASCI' ! 'ASC' ! 'AS' ! 'A'
+*
+*
+        OUTPUT = '    START OF PROGRAM -- TRANS.'
++               '  LAST UPDATE APRIL 8, 1975'
+*
+*
+*  DECLARE MAX LENGTH OF STRINGS AND NUMBER OF STATEMENT
+*  EXECUTIONS SO SNOBOL DOESN'T BOMB.
+*
+        &STLIMIT = 100000000
+        &MAXLNGTH = 50000
+*
+*  DEFINE FILE INPUT AND OUTPUT VARIABLES.
+*
+BEG     FILEDEFINE()
+*
+*  CALL ROUTINE TO DETERMINE WHAT TRANSLATIONS ARE TO BE DONE.
+*
+RECOMMAND  CLI()
+*
+*  READ IN THE TEXT TO BE TRANSLATED.
+*  AFTER INPUTTING TEXT BRANCH TO CODE BASED ON TRANSLATION.
+*
+        INDIRECT = IN OUT
+        OUTPUT = ' TRANSLATION OF ' IN ' TO ' OUT ' BEGINNING'
+*
+*  INSERT A BLANK BEFORE INPUT STRING TO DELIMIT FIRST WORD.
+*
+REREED  ALLTEXT =   READTEXT()                  :F(EOF)S($INDIRECT)
+*
+*
+*  DEFINE THE TRANSLATIONS WHICH ARE REFLEXIVE AND DO NOT
+*  ACTUALLY REQUIRE TRANSLATION--
+*  THEY JUST OUTPUT THE INPUT TEXT.
+*
+ENGLISHENGLISH
+**      OUTPUT = ' TRANS FROM ENG TO ENG '
+                                                :(MSG)
+IPAIPA
+**      OUTPUT = ' TRANS FROM IPA TO IPA '
+                                                :(MSG)
+VOTRAXVOTRAX
+**      OUTPUT = ' TRANS FROM VOTRAX TO VOTRAX '
+                                                :(MSG)
+ASCIIASCII
+**      OUTPUT = ' TRANS FROM ASCII TO ASCII '
+                                                :(MSG)
+*
+MSG     TTYFLAG  SET                            :S(TTYOUT0)
+        FILEOUT(ALLTEXT ENDOFMESSAGE)           :(REREED)
+TTYOUT0  TRANSTEXT = ' RESULT IS ' ALLTEXT      :(REREED)
+*
+*
+*  DEFINE THE ROUTINES WHICH ARE NOT IMPLEMENTED.
+*  THESE ARE ASCII TO VOTRAX
+*  ASCII TO IPA
+*  ASCII TO ENGLISH
+*  VOTRAX TO IPA
+*  VOTRAX TO ENGLISH
+*  AND IPA TO ENGLISH.
+*
+*
+IPAENGLISH  OUTPUT = ' TRANSLATION OF IPA TO ENG NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+ASCIIVOTRAX  OUTPUT = ' TRANS OF ASCII TO VOTRAX NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+ASCIIIPA  OUTPUT = ' TRANS OF ASCII TO IPA NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+ASCIIENGLISH  OUTPUT = ' TRANS OF ASCII TO ENG NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+VOTRAXIPA  OUTPUT = ' TRANS OF VOTRAX TO IPA NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+VOTRAXENGLISH  OUTPUT = ' TRANS OF VOTRAX TO ENG NOT IMPLEMENTED'
++                                               :(RECOMMAND)
+*
+*
+*  TO TRANSLATE FROM IPA TO VOTRAX AND ASCII.
+*  TO TRANSLATE FROM VOTRAX TO ASCII.
+*
+*
+IPAASCII
+**      OUTPUT = ' TRANS OF IPA TO ASCII'
+*
+*  REMOVE END OF TEXT MARKER.
+*
+        ALLTEXT  ENDTEXTTEST  = BLANK
+*
+*  CALL ROUTINE TO TRANS FROM IPA TO VOTRAX CODES.
+*
+        VOTRAXSYMBOLS = VOTRAXTRANSLATE(ALLTEXT)
+*
+*  CALL ROUTINE TO TRANS TO ASCII
+*
+        ASCIIRESULT = ASCII(VOTRAXSYMBOLS)
+*
+*  SEE IF SHOULD OUTPUT IN FORMAT FOR SPEECH LAB.
+*
+        TTYFLAG  SET                            :S(TTYOUT)
+        FILEOUT(ASCIIRESULT ENDOFMESSAGE)       :(REREED)
+TTYOUT  TRANSTEXT = ' ASCII RESULT IS ' ASCIIRESULT     :(REREED)
+*
+*
+IPAVOTRAX
+**      OUTPUT = ' TRANS OF IPA TO VOTRAX '
+*
+*  REMOVE END TEXT MARKER.
+*
+        ALLTEXT ENDTEXTTEST     = BLANK
+*
+*  TRANSLATE THE STRING.
+*
+        VOTRAXSYMBOLS = VOTRAXTRANSLATE(ALLTEXT)
+*
+*  SEE IF SHOULD OUTPUT TO CASSETTE.
+*
+        TTYFLAG SET                             :F(FILE2)
+        TRANSTEXT = ' THE VOTRAX RESULT IS '
+        TRANSTEXT = '   ' VOTRAXSYMBOLS         :(REREED)
+FILE2   FILEOUT(VOTRAXSYMBOLS ENDOFMESSAGE)     :(REREED)
+*
+*
+ENGLISHVOTRAX
+**      OUTPUT = ' TRANS OF ENG TO VOTRAX '
+*
+*  SET FLAG TO SAY TRANS TO VOTRAX ALSO.
+*
+        VOTRAXFLAG = SET                        :(ENGVOTRAX)
+*
+*  WILL BRANCH TO HERE AT CONCLUSION OF TRANS TO VOTRAX.
+*  SEE IF SHOULD OUTPUT TO CAS.
+*
+ENDENGVOTRAX    TTYFLAG    SET                  :F(FILE3)
+        TRANSTEXT = ' VOTRAX RESULT IS '
+        TRANSTEXT = '  ' VOTRAXSYMBOLS          :(REREED)
+FILE3   VOTRAXSYMBOLS = REPLACE(VOTRAXSYMBOLS,'[]','  ')
+        FILEOUT(VOTRAXSYMBOLS ENDOFMESSAGE)     :(REREED)
+*
+*
+ENGLISHASCII
+**      OUTPUT = ' TRANS OF ENG TO ASCII '
+*
+*  SET FLAGS FOR ASCII TRANS AND FOR VOTRAX FLAGS.
+*
+        ASCIIFLAG = SET
+        VOTRAXFLAG = SET                        :(ENGVOTRAX)
+*
+*  RETURN HERE AT COMPLETION OF TRANSLATION.
+*  SEE IF SHOULD OUTPUT TO CAS.
+*
+ENDENGASCII  TTYFLAG SET                        :F(FILE4)
+        TRANSTEXT = ' ASCII RESULT IS '
+        TRANSTEXT = '  ' ASCIIRESULT            :(REREED)
+FILE4   FILEOUT(ASCIIRESULT ENDOFMESSAGE)       :(REREED)
+*
+*
+VOTRAXASCII
+**      OUTPUT = ' TRANS OF VOTRAX TO ASCII'
+*
+*  REMORE END TEXT MARKER.
+*
+        ALLTEXT ENDTEXTTEST     = NULL
+*
+*  CALL ROUTINE TO TRANSLATE.
+*
+        ASCIIRESULT = ASCII(ALLTEXT)            :F(REREED)
+*
+*  SEE IF SHOULD OUTPUT TO CAS.
+*
+        TTYFLAG  SET                            :F(FILE5)
+        TRANSTEXT =  '  '  ASCIIRESULT          :(REREED)
+FILE5    FILEOUT(ASCIIRESULT ENDOFMESSAGE)      :(REREED)
+*
+*
+ENGLISHIPA
+**      OUTPUT = ' TRANS OF ENG TO IPA '
+*
+*  BRANCH HERE IF TRANS OF ENG TO VOTRAX OR ASCII.
+*
+ENGVOTRAX  IPARESULT = NULL
+        IPARESULT = TRANSLATETEXT(ALLTEXT)
+*
+*  SEE IF WE ARE TO TRANS TO VOTRAX.
+*
+VOTRAXCALL   VOTRAXFLAG SET = UNSET             :F(ENDENGIPA)
+*
+*  FLAG WAS SET SO TRANS TO VOTRAX.
+*  TRANS THE STRING.
+*
+        VOTRAXSYMBOLS = VOTRAXTRANSLATE(IPARESULT)
+*
+*  IS ASCII FLAG SET?
+*
+        ASCIIFLAG SET = UNSET                   :F(ENDENGVOTRAX)
+*
+*  YES--CALL ASCII ROUTINE.
+*
+        ASCIIRESULT = ASCII(VOTRAXSYMBOLS)      :(ENDENGASCII)
+*
+*  COME HERE IF NOT TRANS TO VOTRAX OR ASCII.
+*  SEE IF SHOULD OUTPUT TO CAS.
+*
+ENDENGIPA TTYFLAG  SET                          :F(FILE6)
+        TRANSTEXT = ' IPA RESULT IS '
+        TRANSTEXT = '    '  IPARESULT           :(REREED)
+FILE6   FILEOUT(IPARESULT ENDOFMESSAGE)         :(REREED)
+*
+*
+****************************************************************
+*
+*       TRANSLATETEXT
+*
+****************************************************************
+*
+*
+*  START THE SCAN AT FIRST CHARACTER OF INPUT.
+*  POSITION 0 IS A BLANK INSERTED BY THE PROGRAM TO DELIMIT
+*  THE FIRST WORD.
+*
+TRANSLATETEXT      I = 1
+        TRANSLATETEXT = NULL
+*
+*  PICK OFF ONE CHARACTER OF 'TEXT' AT ITH POSTION.
+*
+NEXTCHAR        TEXT   POS(I)   LEN(1) . CHAR
+*
+*  TEST FOR END TEXT MARKER  -- IF SO RETURN.
+*
+        CHAR    ENDTEXT                         :S(RETURN)
+*
+*  CONCATENATE THE PHONEME WHICH IS RETURNED BY 'TRANSLATE'.
+*
+        TRANSLATETEXT = TRANSLATETEXT TRANSLATE(TEXT,CHAR,'ENG')
+*
+*  INCREMENT THE POINTER TO THE NEXT CHARACTER IN 'TEXT' TO BE
+*  TRANSLATED.
+*  'INCVALUE' SET BY ROUTINE 'TRANSLATE'.
+*
+        I = I + INCVALUE                        :(NEXTCHAR)
+*
+*
+****************************************************************
+*
+*       TRANSLATE
+*
+*  THIS ROUTINE DOES THE ACTUAL TRANSLATION OF THE LETTER
+*  PASSED BY THE MAIN PROGRAM IN 'CHAR'  BY CHOOSING THE RULE
+*  WHICH APPLIES TO THE CONTENTS OF 'TEXT' AND PASSING BACK THE
+*  PHONEME.
+*  ADDITIONALLY, TRANSLATE SETS A VARIABLE 'INCVALUE' TO THE
+*  NUMBER OF SYMBOLS REPLACED SO THAT THE
+*  MAIN ROUTUNE MAY INCREMENT THE POINTER INTO 'TEXT'.
+*
+****************************************************************
+*
+*
+*  SET OF SPECIAL CASE SYMBOLS
+*       # = 1 OR MORE VOWELS
+*       * = 1 OR MORE CONSONANTS
+*       . = A VOICED CONSONANT
+*       $ = SINGLE CONSONANT FOLLOWED BY AN 'I' OR 'E'
+*       % = SUFFIX SUCH AS 'E','ES','ED','ER','ING','ELY'
+*       & = A SIBILANT
+*       @ = A CONSONANT AFTER WHICH LONG 'U' IS PRONOUNCED
+*               AS IN 'RULE', NOT 'MULE'
+*       ^ = A SINGLE CONSONANT
+*       + = A FRONT VOWEL: 'E','I','Y'
+*       : = 0 OR MORE CONSONANTS
+*
+*       SPECIALCASE = '#*.$%&@^+:'
+*       PUNCTSYMBOL = ' ,.?;:+*"$%&-<>!(=' SINGLEQUOTE
+*
+*
+TRANSLATE  GRAPHEME ANY(PUNCTSYMBOL)  REM  = 'PUNCT'
+        GRAPHEME ANY(NUMBER) REM = 'NUMBER'
+*
+*  COPY THE SET OF POSSIBLE RULES FOR THE CHARACTER PASSED.
+*
+        GRRULE = $(GRAPHEME 'RULE.' QUAL)
+*
+*  BREAK OFF ONE OF THE RULES.
+*       RULEBREAKPATTERN = BREAK('\') . RULE '\'
+*
+NEXTRULE  GRRULE  RULEBREAKPATTERN = NULL       :F(NORULEAPPLIES)
+*
+*  BREAK THE RULE INTO ITS COMPONENT PIECES OF THE PATTERN
+*  TO MATCH AND THE PHONEMES TO REPLACE IF MATCH IS A SUCCESS.
+*  BREAK RULE INTO PIECES OF STRING BEFORE THE SYMBOL TRANSLATING,
+*  STRING OF LETTERS TO BE REPLACED BY 'PHONEME' IF MATCH OCCURS,
+*  AND STRING OF LETTERS AFTER THE REPLACEMENT LETTERS.
+*
+*       RULECHARSEP =  BREAK('[') . BACKCHAR  '['
+*+              BREAK(']') . CHARDEF  ']'
+*+              BREAK('=') . FORCHAR  '='
+*+              REM . PHONEME
+*
+        RULE    RULECHARSEP
+*
+*  A CHECK OF THE RULE MUST BE MADE IN CASE A CHARACTER OTHER THAN
+*  AN ALPHABETIC OR BRACKET APPEARS.
+*  WHEN THIS OCCURS THE RULE HAS A SPECIAL CASE SUCH AS A VOWEL OR
+*  CONSONANT SEQUENCE  (#,*) OR A VOICED CONSONANT (.).
+*  WHEN ONE OF THESE SPECIAL CHARACTERS APPEARS IN THE RULE, THE
+*  ROUTINE   'SPECIALCASEPROC'   BUILDS A PATTERN TO MATCH 'TEXT'.
+*  OTHERWISE THE PIECES OF THE RULE ARE USED EXPLICITLY AS BELOW.
+*
+*
+*  IF A SPECIAL CHAR IS FOUND IN THE RULE GO TO THE SPECIAL PROC.
+*
+        (FORCHAR BACKCHAR)  ANY(SPECIALCASE)    :S(SPECIALCASEPROC)
+*
+*  NO SPECIAL SYMBOLS APPEARED IN THE RULE.
+*  MATCH ON THE PIECES.  IF FAIL GET NEXT RULE.
+*  DETERMINE WHERE TO BEGIN MATCH BY BACKING UP IN BUF
+*  THE NUMBER OF CHARS IN BACKCHAR.
+*
+        BACK = GE(I,SIZE(BACKCHAR)) SIZE(BACKCHAR)
++                                               :F(NEXTRULE)
+        BUF     POS(I - BACK) BACKCHAR CHARDEF FORCHAR
++                                               :F(NEXTRULE)
+*
+*  MATCH WAS MADE.
+*  RETURN THE PHONEME SEQUENCE AS SPECIFIED BY THE RULE.
+*  DETERMINE THE AMOUNT TO INCREMENT THE POINTER.
+*  THIS VALUE COMPUTED BASED ON NO. CHARS IN CHARDEF.
+*
+INCSET  INCVALUE = SIZE(CHARDEF)
+*
+**      OUTPUT = ' RULE USED WAS <' RULE '>'
+**      OUTPUT = ' PHONEME IS <' PHONEME '>'
+*  GATHER STATISTIC AT THIS POINT.
+*  SEE IF STATFLAG IS SET.  IF SO OUTPUT RESULTS.
+*
+        STATFLAG  SET                           :F(TRANSRET)
+        STATISTICS = RULE
+*
+TRANSRET  TRANSLATE = PHONEME                   :(RETURN)
+*
+*
+*  SPECIALCASEPROC:
+*
+*  THIS IS THE SECTION WHICH TAKES CARE OF THE SPECIAL CASE RULES.
+*  IT CREATES PATTERNS FOR THE SPECIAL CASES BY CALLING THE
+*  FUNCTION  'SPECIALBREAK'    WHICH BUILDS A PATTERN BASED ON
+*  THE SPECIAL CHARACTERS IN THE STRING PASSED AS THE PARAMETER.
+*  ON FAILURE TO MATCH THE PATTERN ANOTHER RULE WILL BE TRIED.
+*
+*  RULES MUST NOT HAVE SPECIAL CASES INTERNAL TO THE
+*  BRACKETS,  I.E. IN 'CHARDEF'.
+*  IF THEY DO THEN THE PROGRAM MUST BE REVISED TO HANDLE
+*  THE CASE BY USING 'SPECIALBREAK' ON 'CHARDEF' ALSO.
+*  A RULE IS OF THE FORM :
+*       A[B]C=/PHONEMES/
+*  WHERE A AND C ARE STRINGS OF ALPHABETICS OR
+*  SPECIAL SYMBOLS
+*  AND B IS A STRING OF ALPHABETIC ONLY.
+*
+*  CREATE A PATTERN FOR SPECIALCASES BY CALLING 'SPECIALBREAK'
+*  POSITION POINTER AND CHARACTERS TRYING TO MATCH ('CHARDEF'),
+*  CALL SPECIALBREAK WITH FORCHAR.
+*  ON FAILURE TO MATCH GET ANOTHER RULE.
+*
+SPECIALCASEPROC
++       BUF     SPECIALBREAK(BACKCHAR) POS(I) CHARDEF
++               SPECIALBREAK(FORCHAR)   :S(INCSET)F(NEXTRULE)
+*
+*  ON SUCCESS  RETURN PHONEMES TO MAIN PROGRAM.
+*
+*
+****************************************************************
+*
+*       SPECIALBREAK
+*
+*  THIS FUNCTION BUILDS A PATTERN MATCH BASED ON THE PIECES OF THE
+*  RULE PASSED TO IT AS A PARAMETER.
+*
+****************************************************************
+*
+*
+*  DEFINE PIECES OF THE PATTERN BASED ON THE SPECIAL CHARACTER
+*  ENCOUNTERED IN PARAMETER.
+*
+SPECIALBREAK  PATTERN =
+*
+*
+*        VOWEL = 'AEIOUY'
+*        CONSONANT = 'BCFDGHJKLMNPQRSTVWXZ'
+*        VOICED = 'BDVGJLMNRWZ'
+*        FRONT = 'EIY'
+*        SUFFIX = 'ER ' ! 'E ' ! 'ES ' ! 'ED ' ! 'ING '
+*        SIBILANT = ANY('SCGZXJ') ! 'CH' ! 'SH'
+*        NONPAL = ANY('TSRDLZNJ') ! 'TH' ! 'CH' ! 'SH'
+*        $'PATTERN#' = ANY(VOWEL) ARBNO(ANY(VOWEL))
+*        $'PATTERN*' = ANY(CONSONANT) ARBNO(ANY(CONSONANT))
+*        $'PATTERN.' = ANY(VOICED)
+*        $'PATTERN$' = ANY(CONSONANT) ANY('EI')
+*        $'PATTERN%' = SUFFIX
+*        $'PATTERN&' = SIBILANT
+         $'PATTERN@' = NONPAL
+*        $'PATTERN^' = ANY(CONSONANT)
+*        $'PATTERN+' = ANY(FRONT)
+*        $'PATTERN:' = ARBNO(ANY(CONSONANT))
+*
+*  REPLACE EVERYTHING UP TO SPECIAL CHARACTER BY NULL AND ASSIGN
+*  WHAT MATCHED TO 'PATTERN1'.
+*
+REMATCH  STR    BREAK(SPECIALCASE) . PATTERN1 =         :F(ALLDONE)
+*
+*  BREAK OFF THE SPECIAL CASE CHAR INTO SYM.
+*  REPLACE IT BY THE NULL STRING.
+*
+        STR   LEN(1) . SYM =
+*
+*  BUILD PATTERN TO PASS BACK TO CALLER BASED ON PREVIOUSLY
+*  BUILT PARTIAL PATTERN AND PATTERN BASED ON THE SPECIAL SYMBOL
+*  STORED IN 'SYM' LOOP TO REMATCH UNTIL NOTHING LEFT IN STR OR
+*  NO MORE SPECIAL CHARACTERS.
+*
+        PATTERN = PATTERN  PATTERN1  $('PATTERN' SYM)   :(REMATCH)
+*
+*  RETURN WITH PATTERN THAT WAS BUILT.
+*  THE REMAINDER OF 'STR' HAS NO SPECIAL CHARACTERS IN IT.
+*
+ALLDONE  SPECIALBREAK = PATTERN   STR           :(RETURN)
+*
+*
+****************************************************************
+*
+*       VOTRAXTRANSLATE
+*
+*  TRANSLATES FROM IPA NOTATION TO VOTRAX SYMBOLS.
+*  PARAMETERS ARE THE STRING TO BE TRANSLATED. EACH PHONEME
+*  MAY BE DELIMITED BY SLASHES.
+*
+****************************************************************
+*
+*
+VOTRAXTRANSLATE   VOTRAXSTR = NULL
+        I = 1
+        ENDIPASTR  = '#'
+        IPASTR = IPAPHONEMES ENDIPASTR
+        IPASTR = REPLACE(IPASTR,'/',BLANK)
+*
+*  REMOVE DOUBLE BLANKS.
+*
+REMOVEBLANKS  IPASTR DOUBLEBLANK = BLANK        :S(REMOVEBLANKS)
+TRY     IPASTR POS(I)  ENDIPASTR                :S(DONEVOTRAX)
+        IPASTR POS(I) BREAK(BLANK) . IPASYM
+DIFFERENT  VOTRAXSTR = VOTRAXSTR  TRANSLATE(IPASTR,IPASYM,'IPA')
+        I = I + INCVALUE + 1                    :(TRY)
+DONEVOTRAX   VOTRAXTRANSLATE = VOTRAXSTR        :(RETURN)
+*
+*
+****************************************************************
+*
+*       READTEXT
+*
+*  READ A SERIES OF TEXT TO BE TRANSLATED.
+*  TERMINATE IT BY A # .
+*
+****************************************************************
+*
+*
+READTEXT   TOTALTEXT =
+*
+*
+*       ILLEGALPUNCT = '[]/\'
+*       PUNCTSYMNOBLANK = './,;+<>?*=-:)(&%$"!' SINGLEQUOTE
+*       QUOTE = '"'
+*
+*
+*  SKIP MESSAGE IF INPUT IS A FILE.
+*
+        INFILE  TTY                             :F(REREAD)
+        OUTPUT = ' ENTER TEXT TERMINATED BY A   ' ENDTEXT
+*
+REREAD  TOTALTEXT = TOTALTEXT INPUTTEXT BLANK   :F(FRETURN)
+        TOTALTEXT  ENDTEXT                      :F(REREAD)
+*
+*  SEE IF USER WISHES TO REDEFINE INPUT FILES AND OTHERS.
+*  TEST FOR INPUT FROM TTY OR INPUT FILE TO BE END MARKS.
+*  THE END OF FILE MARK IS ### STARTING IN FIRST CHAR POSITION.
+*
+        TOTALTEXT  ESCAPECODE                   :S(FRETURN)
+        TOTALTEXT ENDTEXT REM = BLANK ENDTEXT
+*
+*  REMOVE ILLEGAL PUNCTUATION FROM STRING.
+*
+TEST    TOTALTEXT ANY(ILLEGALPUNCT) = BLANK     :S(TEST)
+*
+*  INSERT BLANKS ON EITHER SIDE OF ANY PUNCTUATION APPEARING
+*  IN THE INPUT TEXT SO EACH WORD IS DELIMITED.
+*
+        T = 0
+HERE    TOTALTEXT  POS(T) BREAK(PUNCTSYMNOBLANK) $ T1
++               SPAN(PUNCTSYMBOL) $ T2
++               = T1 BLANK T2 BLANK             :F(TEST2)
+        T = SIZE(T1 T2) + T + 1                 :(HERE)
+TEST2   TOTALTEXT = BLANK TOTALTEXT
+*
+*  REMOVE MULTIPLE BLANKS AND REPLACE BY SINGLE BLANK.
+*
+TEST3   TOTALTEXT  DOUBLEBLANK = BLANK          :S(TEST3)
+*
+*  SEE IF FLAG THAT SAYS TO OUTPUT THE INPUT TEXT TO CASSETTE ON.
+*
+        TEXTFLAG  SET                           :F(STATTEST)
+*
+*  REMOVE END OF TEXT MARKER BEFORE WRITING TO CASSETTE.
+*
+        TEMPTEXT = TOTALTEXT
+        TEMPTEXT ENDTEXT = NULL
+*
+*  INSERT A QUOTE MARK BEFORE AND AFTER TEXT TO BE WRITTEN TO CAS.
+*
+        FILEOUT(QUOTE TEMPTEXT QUOTE)
+*
+*  SEE IF STATFLAG SET.  IF SO OUTPUT THE TEXT TO STAT FILE.
+*
+STATTEST  STATFLAG  SET                         :F(RET)
+*
+*  INSERT THE ACTUAL TEXT TO BE TRANSLATED TO THE STAT FILE.
+*
+        STATISTICS  =  '**' TOTALTEXT
+*
+RET     READTEXT = TOTALTEXT                    :(RETURN)
+*
+*
+****************************************************************
+*
+*       ASCII
+*
+*  THIS TRANSLATES TO ASCII.
+*
+****************************************************************
+*
+*
+ASCII   ASCII = NULL
+*
+*  REMOVE LEFT AND RIGHT BRACKETS.
+*
+        STRING = REPLACE (STRING,'[]','  ')
+*
+*  INSERT AN END BLANK SO FOLLOWING BREAK WILL WORK ON LAST WORD.
+*
+        STRING = STRING  BLANK
+*
+*  GET RID OF DOUBLE BLANKS SO THAT BREAK WILL NOT GET NULL SYMBOL.
+*
+AGAIN   STRING  DOUBLEBLANK = BLANK             :S(AGAIN)
+*
+*  REMOVE INITIAL BLANK IF ANY SO BREAK WON'T BREAK BEFORE IT.
+*
+        STRING POS(0) BLANK = NULL
+LOOP    STRING  BREAK(BLANK) . ASCIISYM BLANK =         :F(RETURN)
+        ASCIISYM  BLANK = 'BLANK'
+        ASCII = ASCII DIFFER(NULL,$(ASCIISYM '.CODE'))
++               $(ASCIISYM '.CODE')             :S(LOOP)
+*
+*
+****************************************************************
+*
+*       CLI
+*
+*  THIS INPUTS THE KIND OF TRANSLATION WANTED
+*  THEN BUILDS VARIABLES IN 'IN' AND 'OUT'
+*  TO TRANSFER INDIRECT TO THE CODE.
+*
+****************************************************************
+*
+*
+*       ENGLISH = 'ENGLISH' ! 'ENGLIS' ! 'ENGLI' ! 'ENGL' ! 'ENG' !
+*+               'EN' ! 'E'
+*       IPA = 'IPA' ! 'IP' ! 'I'
+*       VOTRA = 'VOTRAX' ! 'VOTRA' ! 'VOTR' ! 'VOT' ! 'VO' ! 'V'
+*       ASCI = 'ASCII' ! 'ASCI' ! 'ASC' ! 'AS' ! 'A'
+*
+*
+CLI        RESPONSE = NULL
+CLIRETRY        OUTPUT = ' WHAT TRANSLATION DO YOU WANT?'
+        RESPONSE = INPUT BLANK
+        RESPONSE  BREAK(PUNCTSYMBOL) . IN  ANY(PUNCTSYMBOL)
++               BREAK(PUNCTSYMBOL) . OUT
+        IN      POS(0) ENGLISH RPOS(0) = 'ENGLISH'      :S(OUTTEST)
+        IN      POS(0) IPA RPOS(0)  = 'IPA'             :S(OUTTEST)
+        IN      POS(0) VOTRA RPOS(0)  = 'VOTRAX'        :S(OUTTEST)
+        IN      POS(0) ASCI RPOS(0)  = 'ASCII'          :S(OUTTEST)
++                                                       F(ERRORIN)
+*
+OUTTEST OUT     POS(0) ENGLISH RPOS(0)  = 'ENGLISH'     :S(RETURN)
+        OUT     POS(0) IPA RPOS(0)  = 'IPA'             :S(RETURN)
+        OUT     POS(0) VOTRA RPOS(0)  = 'VOTRAX'        :S(RETURN)
+        OUT     POS(0) ASCI RPOS(0)  = 'ASCII'          :S(RETURN)
++                                                       F(ERROROUT)
+*
+ERRORIN  OUTPUT = ' INITIAL TRANSLATION PARAMETER ILLEGAL'
+        OUTPUT = ' PARAMETER IS ' IN            :(CLIRETRY)
+ERROROUT  OUTPUT = ' FINAL TRANSLATION PARAMETER ERROR'
+        OUTPUT = ' PARAMETER IS ' OUT           :(CLIRETRY)
+*
+****************************************************************
+*
+*       FILEDEFINE
+*
+****************************************************************
+*
+*  DEFINE FILENUMBERS FOR THE INPUT FILE THE STAT FILE AND THE
+*  TRANS FILE.  THESE ARE USED IN THE VARIABLE ASSIGNMENTS TO
+*  INDICATE THE I/O.
+*
+FILEDEFINE  INNO = 22
+        STATNO = 23
+        TRANSNO = 24
+        STATFLAG = UNSET
+        TTYFLAG = UNSET
+        TEXTFLAG = UNSET
+*
+        OUTPUT = 'WHAT IS THE INPUT FILE NAME?'
+        INFILE = INPUT
+*
+*  SEE IF IT IS THE TTY (INPUT DEVICE USING).
+*
+        INFILE   TTY                            :F(OKAY1)
+*
+*  YES IT IS SO REDEFINE INPUT FILE TO TTY = 2 ON THIS SYSTEM.
+*
+        INNO = 2                                :(SOK1)
+*
+*  THE DEVICE IS NOT THE TTY SO MAKE CORRESPONDENCE WITH FILE
+*  NAME AND DEVICE NUMBER.
+*
+OKAY1        IFILE(INNO,INFILE)
+*
+*  GET TRANSFILE NAME.
+*
+SOK1    OUTPUT = ' WHAT IS THE FILENAME FOR THE '
++               'TRANSLATION RESULTS?'
+        TFILE = INPUT
+        IDENT(TFILE,NULL)                       :F(NEXT)
+        ENDFILE(TRANSNO)                        :(NEXTQ)
+NEXT    TFILE    TTY                            :F(CASTEST)
+*
+*  REDEFINE FILENO TO TTY.
+*
+        TRANSNO = 2
+*
+*  SET FLAG TO SAY TTY OUTPUT.
+*
+        TTYFLAG = SET                           :(OKAY2)
+*
+*  SEE IF THE DEVICE IS THE CASSETTE.
+*  SEE IF USER WISHES ORIGINAL TEXT TO BE WRITTEN.
+*
+CASTEST TFILE   CAS                             :F(ASKAGAIN)
+*
+*  YES IT IS CASSETTE SO DEFINE NO. TO TTY AND SET FLAG.
+*
+        TRANSNO = 2
+ASKAGAIN  OUTPUT = ' TEXT TO FILE, TOO?'
+        CASANS = INPUT
+*
+*  SEE IF ANSWER YES.
+*
+        CASANS   NOANS                          :S(OKAY2)
+*
+*  MAKE SURE ANSWER IS YES AND NOTHING ELSE.
+*
+        CASANS  YESANS                          :F(ASKAGAIN)
+*
+*  ALL IS OKAY AND ANSWER WAS YES.  SET FLAG.
+*
+        TEXTFLAG = SET
+*
+OKAY2   TFILE   POS(0) OLDTFILE RPOS(0)         :S(NEXTQ)
+*
+*  THIS IS A NEW FILE SO SAVE ITS NAME.
+*
+        OLDTFILE = TFILE
+*
+*  CLOSE THE OLD FILE.
+*
+        ENDFILE(TRANSNO)
+*
+*  MAKE NEW ASSIGNMENT.
+*
+        OFILE(TRANSNO,TFILE)
+*
+NEXTQ   OUTPUT = ' DO YOU  WANT TO GATHER STATISTICS?'
+        ANS = INPUT
+        ANS     NOANS                           :S(DEF)
+*
+*  STATISTICS ARE WANTED.
+*
+        OUTPUT = ' WHAT IS THE FILENAME?'
+        STFILE = INPUT
+        IDENT(STFILE,NULL)                      :S(NEXTQ)
+*
+*  SET FLAG TO INDICATE STAT GATHER.
+*
+        STATFLAG = SET
+*
+*  SEE IF STATS ARE TO BE SENT TO TTY.
+*
+        STFILE  TTY                             :F(OKAY3)
+        STATNO = 2
+OKAY3   STFILE  POS(0) OLDSTFILE RPOS(0)        :S(DEF)
+*
+*  NOT THE SAME STAT FILE SO SAVE THE NAME.
+*
+        OLDSTFILE = STFILE
+*
+*  CLOSE THE OLD STAT FILE.
+*
+        ENDFILE(STATNO)
+*
+*  REDEFINE THE STAT FILE NAME.
+*
+        OFILE(STATNO,STFILE)
+*
+*  SET UP VARIABLE ASSOCIATIONS.
+*
+DEF     INPUT('INPUTTEXT',INNO,80)
+        OUTPUT('STATISTICS',STATNO,'(1X,15A5)')
+        OUTPUT('TRANSTEXT',TRANSNO,'(1X,15A5)') :(RETURN)
+*
+*
+****************************************************************
+*
+*       FILEOUT
+*
+*  THIS ROUTINE OUTPUTS VOTRAX MNEMONIC CODES TO A FILE.
+*  EACH CODE IS SEPARATED BY A BLANK.
+*  THE SEQUENCE IS PRECEDED BY A RECORD ON CODE MEANT
+*  FOR THE 733 ASR CASSETTE TO TURN ON THE CASSETTE.
+*  THE MESSAGE IS ENDED BY AN END OF MESSAGE CHARACTER
+*  WHICH HAS MEANING TO THE SPEECH LAB PROGRAMS RUNNING
+*  ON THE TI 960A, FOLLOWED BY A DELETE CODE TO WRITE OVER THE
+*  RECORD OFF IN THE CASSETTE BUF, AND THE FINAL CODE IS A
+*  RECORD OFF TO SHUT THE CASSETTE OFF.
+*
+*       DC2 = RECORDON
+*       DC4 = RECORDOFF
+*       '^' IS USED BY THE TI SPEECH LAB AS AN
+*       END OF MESSAGE CODE.
+*
+*  ENDOFMESSAGE  IS INSERTED
+*  BEFORE THIS ROUTINE IS CALLED IF IT IS WANTED IN THE RECORD.
+*
+****************************************************************
+*
+*
+*  REMOVE BRACKETS ] AND [ FROM THE TEXT.
+*
+FILEOUT      TEMPOUT = REPLACE(BUF,'][',BLANK BLANK)
+RELOOP1  TEMPOUT  DOUBLEBLANK = BLANK           :S(RELOOP1)
+*
+*  SEND THE TEXT TO THE FILE.
+*  ALSO BREAK UP INTO BLOCKS AT A BLANK SO THAT
+*  THE COMMUNICATIONS PROCESSOR DOESN'T ELIMINATE
+*  IMPORTANT BLANKS.
+*
+        TEMPOUT = RECORDON TEMPOUT DUPL(DELETE,86)
++               RECORDOFF DELETE BLANK
+REDO0  TEMPOUT (TAB(70) BREAK(BLANK)) . T =     :F(LAST)
+        TRANSTEXT = T                           :(REDO0)
+*
+LAST    TRANSTEXT = TEMPOUT                     :(RETURN)
+*
+*
+****************************************************************
+*
+*
+*  DEFINE SOME ERROR MESSAGES.
+*
+NORULEAPPLIES  OUTPUT = ' NO RULE APPLIES. RULES ATTEMPTING '
++               'TO USE ARE <' GRAPHEME 'RULE.' QUAL  '>'
+        OUTPUT = ' THE CONTENTS ARE <' $(GRAPHEME 'RULE.' QUAL) '>'
+        OUTPUT = ' CHARACTER ATTEMPTING TO PROCESS IS <'
++               GRAPHEME '>'                    :(REREED)
+*
+RULESYNTAXERROR  OUTPUT = ' SYNTAX ERROR IN RULE FORMATION '
++               'RULE IS ' RULE                 :(REREED)
+*
+EOF     OUTPUT = '  EOF ENCOUNTERED IN INPUT FILE'
+        OUTPUT = '  DO YOU WISH TO CONTINUE? '
+        ANS = INPUT
+        ANS     NOANS                           :F(BEG)
+        ENDFILE(TRANSNO)
+        ENDFILE(STATNO)
+DONE    OUTPUT = ' ALL DONE '
+*
+*
+END
