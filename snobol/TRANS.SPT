@@ -722,7 +722,7 @@
 +               BREAK('=') . FORCHAR  '='
 +               REM . PHONEME
         VOWEL = 'AEIOUY'
-        CONSONANT = 'BCFDGHJKLMNPQRSTVWXZ'
+        CONSONANT = 'BCDFGHJKLMNPQRSTVWXZ'
         VOICED = 'BDVGJLMNRWZ'
         FRONT = 'EIY'
         SUFFIX = 'ER ' | 'E ' | 'ES ' | 'ED ' | 'ING '
