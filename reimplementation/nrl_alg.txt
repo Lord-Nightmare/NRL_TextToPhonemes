@@ -1,0 +1,20 @@
+* find next symbol in input stream
+* use this symbol to figure out which array to search in (A -> ARULE, B -> BRULE, etc... punctuation or spaces -> PUNCTRULE, numbers -> NUMBERRULE)
+* each array is a struct with a count of number of elements, plus a set of pointers to strings
+* for each string until either we found a match, or we reached the end (and die with a no match error), do the following:
+     * find the [ in the string
+	 * match every character from the right of the [ to the left of the ] exactly. if this doesn't match, fail and go to next rule.
+	 * starting at the character to the left of the [ IF THERE IS ONE, match using lazy group matching, backwards, for every character until the start of the string.
+	   some characters match exactly one vowel or consonant or some smaller subset; ':' is special in that it matches 0 or more consonants and 'consumes' any it finds.
+	   iterate the input search pointer backwards over each successful matched character or group vs a rule, and iterate the rule pointer backwards as well.
+	   if any rule characters don't match input string characters at the pointer before the rule pointer hits the start of the rule string, fail and go to next rule.
+	   if the input goes out of range (searching behind the first character of the input text string), fail and go to next rule.
+	   i.e. if the rule pointer reaches the start of the string with no mismatches (or if there were no characters to the left of the [ in the rule), continue.
+	 * starting at the character to the right of the ] IF THERE IS ONE, match using lazy group matching, forwards, for every character until the '=' symbol in the rule.
+	   again as above, some characters match one symbol, some match a group of symbols, and : matches 0 or more consonants. 
+	   iterate the input search pointer forwards over each successful matched character or group vs a rule, and iterate the rule pointer forwards as well.
+	   if any rule characters don't match input string characters at the pointer before the rule pointer hits the '=' of the rule string, fail and go to next rule.
+	   if the input goes out of range (searching past the last character of the input text string), fail and go to next rule.
+	   If the rule pointer hits the '=' (or if there were no characters to the right of the ] in the rule before the =),
+	   we have a successful match and break out of this entire for loop and return the rule pointer.
+* take our matched rule, and parse off the piece past the '=' symbol, and add this to the string of translated ipa phonemes.
