@@ -233,24 +233,12 @@ bool isFront(char32_t in)
 // preprocess a vec_char32* list into another vec_char32* list starting at a given offset, return the final offset+1
 u32 preprocess(vec_char32* in, vec_char32* out, u32 in_offset)
 {
-	/*
-	v_printf(V_DEBUG,"called preprocess, in and out stats are:\n");
-	vec_char32_dbg_stats(in);
-	vec_char32_dbg_print(in);
-	vec_char32_dbg_stats(out);
-	vec_char32_dbg_print(out);
-	*/
 	// prepend a space to output
 	vec_char32_append(out, ' ');
 	// iterate over input
 	u32 i;
 	for (i = in_offset; i < in->elements; i++)
 	{
-		/*
-		v_printf(V_DEBUG,"in offset of %d pointing to '%c', out stats are:\n", i, in->data[i]);
-		vec_char32_dbg_stats(out);
-		vec_char32_dbg_print(out);
-		*/
 		if (in->data[i] == '#') // early return: end marker
 		{
 			return i+1;
@@ -302,13 +290,6 @@ u32 getRuleNum(char32_t input)
 	}
 }
 
-bool parseRule(const char* const rule, const vec_char32* const input, const u32 curpos)
-{
-
-	// if the rule doesn't match...
-	return false;
-}
-
 // returns the offset of the first instance of a character found in a string
 // starting from the left. otherwise return -1.
 s32 strnfind(const char *src, int c, size_t n)
@@ -320,27 +301,130 @@ s32 strnfind(const char *src, int c, size_t n)
 	return -1;
 }
 
+// symbols
+/*
+*       # = 1 OR MORE VOWELS
+*       * = 1 OR MORE CONSONANTS
+*       . = A VOICED CONSONANT
+*       $ = SINGLE CONSONANT FOLLOWED BY AN 'I' OR 'E'
+*       % = SUFFIX SUCH AS 'E','ES','ED','ER','ING','ELY'
+*       & = A SIBILANT
+*       @ = A CONSONANT AFTER WHICH LONG 'U' IS PRONOUNCED
+*               AS IN 'RULE', NOT 'MULE' (a nonpalate)
+*       ^ = A SINGLE CONSONANT
+*       + = A FRONT VOWEL: 'E','I','Y'
+*       : = 0 OR MORE CONSONANTS
+*/
+#define VOWEL1M '#'
+#define CONS1M '*'
+#define VOICED '.'
+#define CONS1IE '$'
+#define SUFFIX '%'
+#define SIBIL '&'
+#define NONPAL '@'
+#define CONS1 '^'
+#define FRONT '+'
+#define CONS0M ':'
+
+bool matchRule(const char const rule, const char32_t const input)
+{
+
+}
+
+bool parseLeft(const char* const rule, const vec_char32* const input, const u32 rpinit, const u32 inpos)
+{
+	// rule[rulepos] points to the rule symbol being evaluated
+	// input->data[inpos] points to the input symbol being evaluated
+	s32 rulepos = rpinit;
+	// the leftmost valid input character is technically inpos of 0
+	while (rulepos > 0)
+	{
+		bool rulepass = false;
+		switch(rule[rulepos])
+		{
+			case VOWEL1M: // 1 or more vowels
+				if (isVowel(input->data[inpos]))
+				{
+					rulepass = true;
+					// we got at least one vowel, call this function repeatedly in a loop
+					// consuming more vowels from input-1 until either input-1 becomes -1 OR
+					// we hit a non-vowel, then terminate and leave inpos at that failing position
+				}
+			case CONS1:
+				break; // TODO
+			
+		}
+	}
+	return false;
+}
+
+bool parseRight()
+{
+	return false;
+}
+
+bool parseRule(const char* const rule, const vec_char32* const input, const u32 inpos)
+{
+	// find left end
+	s32 left = strnfind(rule, '[', ruleLen);
+	if (left != 0)
+	{
+		// match left part of rule
+		// early out: if the rule is not ':' which is 'zero or more' of a symbol
+		//   AND this is the leftmost character of the input string, just die immediately
+		//   and fail the rule, otherwise continue
+		if ((rule[left-1] != CONS0) && (inpos == 0))
+		{
+			return false;
+		}
+		// call parseLeft which recursively calls itself and returns true if the rule matches and false if it doesn't.
+		if (!parseLeft(rule, input, left-1, inpos))
+		{
+			return false;
+		}
+	}
+	v_printf(V_DEBUG,"Left half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
+	// find right end
+	s32 right = strnfind(rule, ']', ruleLen);
+	if (rule[right+1] != '=')
+	{
+		// call parseRight which recursively calls itself and returns true if the rule matches and false if it doesn't.
+		if (!parseright(rule, input, right+1, inpos))
+		{
+			return false;
+		}
+	}
+	v_printf(V_DEBUG,"Right half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
+	return true;
+}
+
 s32 applyRule(const char* const rule)
 {
 	u32 ruleLen = strlen(rule);
 	// search through the rule string for the [
 	s32 first = strnfind(rule, '[', ruleLen);
+	if (first == -1) return -1; // early out for invalid rule
 	// search through the rule string for the ]
 	s32 last = strnfind(rule, ']', ruleLen);
 	// return the number of characters between those two.
 	return (last-first)-1;
 }
 
-s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const input, const u32 curpos)
+s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const input, const u32 inpos)
 {
 	// find ruleset for this letter/punct/etc
-	u32 rulenum = getRuleNum(input->data[curpos]);
+	u32 rulenum = getRuleNum(input->data[inpos]);
 	// iterate over every one of these rules and halt on the first match
 	for (u32 i = 0; i < ruleset[rulenum].num_rules; i++)
 	{
 		v_printf(V_DEBUG, "found a rule %s\n", ruleset[rulenum].rule[i]);
-		v_printf(V_DEBUG, "this rule would consume %d characters\n", applyRule(ruleset[rulenum].rule[i]));
-		if (parseRule(ruleset[rulenum].rule[i], input, curpos))
+		if (applyRule(ruleset[rulenum].rule[i]) < 0)
+		{
+			v_printf(V_DEBUG,"ERROR: encountered an invalid rule for character at position %d (%c)!\n", inpos, input->data[inpos]);
+			exit(1);
+		}
+		//v_printf(V_DEBUG, "this rule would consume %d characters\n", applyRule(ruleset[rulenum].rule[i]));
+		if (parseRule(ruleset[rulenum].rule[i], input, inpos))
 		{
 			return applyRule(ruleset[rulenum].rule[i]);
 		}
@@ -357,11 +441,6 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 		v_printf(V_DEBUG, "position is now %d (%c)\n", curpos, input->data[curpos]);
 		u32 oldpos = curpos;
 		curpos += processLetter(ruleset, input, curpos);
-		if (curpos < oldpos)
-		{
-			v_printf(V_DEBUG,"ERROR: encountered an invalid rule for character at position %d (%c)!\n", curpos+1, input->data[curpos+1]);
-			exit(1);
-		}
 		if (curpos - oldpos == 0)
 		{
 			v_printf(V_DEBUG,"WARNING: unable to match any rule for position %d (%c)!\n", curpos, input->data[curpos]);
