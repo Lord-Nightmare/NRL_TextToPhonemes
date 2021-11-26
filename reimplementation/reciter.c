@@ -157,7 +157,7 @@ typedef struct sym_ruleset
 // Letters "ABCDEFGHIJKLMNOPQRSTUVWXYZ'" - any character with this flag has a rule attached to it, this includes the apostrophe
 #define A_LETTER 0x80
 
-u8 ascii_features[0x60]
+u8 ascii_features[0x80] =
 {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-@ thru CTRL-O
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-P thru CTRL+_
@@ -488,6 +488,7 @@ bool parseRight()
 
 bool parseRule(const char* const rule, const vec_char32* const input, const u32 inpos)
 {
+	u32 ruleLen = strlen(rule);
 	// find left end
 	s32 left = strnfind(rule, '[', ruleLen);
 	if (left != 0)
@@ -496,7 +497,7 @@ bool parseRule(const char* const rule, const vec_char32* const input, const u32 
 		// early out: if the rule is not ':' which is 'zero or more' of a symbol
 		//   AND this is the leftmost character of the input string, just die immediately
 		//   and fail the rule, otherwise continue
-		if ((rule[left-1] != CONS0) && (inpos == 0))
+		if ((rule[left-1] != CONS0M) && (inpos == 0))
 		{
 			return false;
 		}
@@ -512,7 +513,7 @@ bool parseRule(const char* const rule, const vec_char32* const input, const u32 
 	if (rule[right+1] != '=')
 	{
 		// call parseRight which recursively calls itself and returns true if the rule matches and false if it doesn't.
-		if (!parseright(rule, input, right+1, inpos))
+		if (!parseRight(rule, input, right+1, inpos))
 		{
 			return false;
 		}
@@ -1133,30 +1134,32 @@ int main(int argc, char **argv)
 	dataArray = NULL;
 
 	// we may have multiple phrases in the input file, so handle each one here sequentially.
-	bool done = false;
-	u32 phrase_offset = 0;
-	while (!done)
-	{
-		// allocate another vector for preprocessing
-		vec_char32* d_pre = vec_char32_alloc(4);
-		// preprocess d_in into d_pre
-		phrase_offset = preprocess(d_in, d_pre, phrase_offset);
-		v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
-		vec_char32_dbg_stats(d_pre);
-		vec_char32_dbg_print(d_pre);
-		v_printf(V_DEBUG,"Input phrase offset is now %d\n", phrase_offset);
-
-		// do stuff with preprocessed phrase here
-		// i.e. the rest of the owl
-		processPhrase(ruleset, d_pre);
-
-		vec_char32_free(d_pre);
-		if (phrase_offset >= d_in->elements)
+	{ // scope limiter for done, phrase_offset
+		bool done = false;
+		u32 phrase_offset = 0;
+		while (!done)
 		{
+			// allocate another vector for preprocessing
+			vec_char32* d_pre = vec_char32_alloc(4);
+			// preprocess d_in into d_pre
+			phrase_offset = preprocess(d_in, d_pre, phrase_offset);
+			v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
+			vec_char32_dbg_stats(d_pre);
+			vec_char32_dbg_print(d_pre);
+			v_printf(V_DEBUG,"Input phrase offset is now %d\n", phrase_offset);
+	
+			// do stuff with preprocessed phrase here
+			// i.e. the rest of the owl
+			processPhrase(ruleset, d_pre);
+	
+			vec_char32_free(d_pre);
+			if (phrase_offset >= d_in->elements)
+			{
+				done = true;
+			}
+			// HACK: for now, just end after the first phrase; later we need to make sure CR/LF etc get nuked properly;
 			done = true;
 		}
-		// HACK: for now, just end after the first phrase; later we need to make sure CR/LF etc get nuked properly;
-		done = true;
 	}
 	vec_char32_free(d_in);
 
