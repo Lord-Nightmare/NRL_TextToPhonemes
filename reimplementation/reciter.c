@@ -195,9 +195,7 @@ bool isVoiced(char32_t in, s_cfg c)
 
 // NRL isFront: return ((in == 'E')||(in == 'I')||(in == 'Y'));
 
-// preprocess passes: these each turn a vec_char32* list into another vec_char32* list starting at a given offset, return the final offset+1
-
-// preprocess 1: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
+// preprocess: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
 void preProcess(vec_char32* in, vec_char32* out, s_cfg c)
 {
 	// prepend a space to output
@@ -219,7 +217,7 @@ u32 getRuleNum(char32_t input)
 	}
 	else if (isalpha(input))
 	{
-		return input - 0x40;
+		return input - 0x41;
 	}
 	else
 	{
@@ -265,6 +263,9 @@ s32 strnfind(const char *src, int c, size_t n)
 
 s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, const u32 inpos, vec_char32* output, s_cfg c)
 {
+	// iterate through the rules
+	for (u32 rulenum = 0; rulenum < ruleset.
+	// match the 
 	return inpos+1; // TODO
 }
 
@@ -272,17 +273,16 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 {
 	v_printf(V_DEBUG, "processPhrase called, phrase has %d elements\n", input->elements);
 	s32 inpos = -1;
-	s32 outpos = -1;
 	char32_t inptemp;
 	while (((inptemp = input->data[++inpos])||(1)) && (inptemp != RECITER_END_CHAR)) // was (curpos < input->elements)
 	{
 		v_printf(V_DEBUG, "position is now %d (%c)\n", inpos, input->data[inpos]);
 		if (input->data[inpos] == '.') // is this character a period?
 		{
-			v_printf(V_DEBUG, "character is a period...");
+			v_printf(V_DEBUG, "character is a period...\n");
 			if (isDigit(input->data[++inpos], c)) // is the character after the period a digit?
 			{
-				v_printf(V_DEBUG, " followed by a digit...");
+				v_printf(V_DEBUG, " followed by a digit...\n");
 				u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
 				if (isPunct(inptemp, c)) // if the initial character was punctuation
 				{
@@ -294,19 +294,38 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 				else
 				{
 					v_printf(V_DEBUG, " but the character before the period was not a punctuation symbol.\n");
-
+					if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
+					{
+						//TODO: original code clobbers the input string character with a space as well
+						vec_char32_append(output, ' '); // add a space to the output word.
+						// THIS CASE IS FINISHED
+					}
+					else
+					{
+						if (inptemp_features&A_LETTER) // could be isLetter(inptemp);
+						{
+							inpos = processRule(ruleset[inptemp-0x41], input, inpos, output, c);
+							// THIS CASE IS FINISHED
+						}
+						else
+						{
+							v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n")
+							exit(1);
+							// THIS CASE IS FINISHED
+						}
+					}
 				}
 			}
 			else
 			{
 				v_printf(V_DEBUG, " but not followed by a digit, so treat it as a pause.\n");
 				vec_char32_append(output, '.'); // add a period to the output word.
-				/// THIS CASE IS FINISHED
+				// THIS CASE IS FINISHED
 			}
 		}
 		else
 		{
-			//v_printf(V_DEBUG, "character is not a period...");
+			v_printf(V_DEBUG, "character is not a period...");
 			u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
 			if (isPunct(inptemp, c)) // if the initial character was punctuation
 			{
@@ -318,7 +337,26 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 			else
 			{
 				v_printf(V_DEBUG, " but the initial charater was not a punctuation symbol.\n");
-
+				if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
+				{
+					//TODO: original code clobbers the input string character with a space as well
+					vec_char32_append(output, ' '); // add a space to the output word.
+					// THIS CASE IS FINISHED
+				}
+				else
+				{
+					if (inptemp_features&A_LETTER) // could be isLetter(inptemp);
+					{
+						inpos = processRule(ruleset[inptemp-0x41], input, inpos, output, c);
+						// THIS CASE IS FINISHED
+					}
+					else
+					{
+						v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n")
+						exit(1);
+						// THIS CASE IS FINISHED
+					}
+				}
 			}
 		}
 	}
@@ -338,9 +376,9 @@ int main(int argc, char **argv)
 	s_cfg c =
 	{
 		{ // ascii_features rules set
-			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-@ thru CTRL-O
-			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-P thru CTRL+_
-			0, // SPACE
+			\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0, // CTRL-@ thru CTRL-O
+			\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0, // CTRL-P thru CTRL+_
+			\0, // SPACE
 			A_PUNCT, // !
 			A_PUNCT, // "
 			A_PUNCT, // #
@@ -348,8 +386,8 @@ int main(int argc, char **argv)
 			A_PUNCT, // %
 			A_PUNCT, // &
 			A_PUNCT|A_LETTER, // '
-			0, // (
-			0, // )
+			\0, // (
+			\0, // )
 			A_PUNCT, // *
 			A_PUNCT, // +
 			A_PUNCT, // ,
@@ -399,11 +437,11 @@ int main(int argc, char **argv)
 			A_LETTER|A_CONS|A_SIBIL, // X
 			A_LETTER|A_VOWEL, // Y
 			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // Z
-			0, // [
-			0, // '\'
-			0, // ]
+			\0, // [
+			\0, // '\'
+			\0, // ]
 			A_PUNCT, // ^
-			0, // _
+			\0, // _
 			/// Technically, we can do a check for 0x60-0x7f and mirror it to 0x40-0x5f,
 			// but to make it so we can just do a simple validation of "is a valid ascii character <= 0x7f"
 			// and protect from out of bounds accesses using &0x7f; we repeat the 0x60-0x7f part here
@@ -434,11 +472,11 @@ int main(int argc, char **argv)
 			A_LETTER|A_CONS|A_SIBIL, // x
 			A_LETTER|A_VOWEL, // y
 			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // z
-			0, // {
-			0, // |
-			0, // }
+			\0, // {
+			\0, // |
+			\0, // }
 			A_PUNCT, // ~
-			0 // DEL
+			\0 // DEL
 		},
 		//NULL, // letter to sound rules
 		1, // verbose (was 0)
