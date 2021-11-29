@@ -22,22 +22,19 @@ typedef uint64_t u64;
 #define RULES_TOTAL 28
 #define RULES_PUNCT 0
 #define RULES_NUMBERS 27
+#define RECITER_TERM_CHAR 0x2b
 
-// verbose macro
+// verbose macros
 #define v_printf(v, ...) \
 	do { if (v) { fprintf(stderr, __VA_ARGS__); fflush(stderr); } } while (0)
+#define eprintf(v, ...) \
+	do { if (v) { fprintf(stdout, __VA_ARGS__); fflush(stdout); } } while (0)
 
 // verbosity defines; V_DEBUG can be changed here to enable/disable debug messages
 #define V_DEBUG (1)
-#define V_0 (c.verbose & (1<<0))
+#define V_ERR (1)
+#define V_PARAM (c.verbose & (1<<0))
 #define V_1 (c.verbose & (1<<1))
-
-// 'global' struct
-typedef struct s_cfg
-{
-	//const char* const letters;
-	u32 verbose;
-} s_cfg;
 
 // 'vector' structs for holding data
 /*
@@ -157,243 +154,58 @@ typedef struct sym_ruleset
 // Letters "ABCDEFGHIJKLMNOPQRSTUVWXYZ'" - any character with this flag has a rule attached to it, this includes the apostrophe
 #define A_LETTER 0x80
 
-u8 ascii_features[0x80] =
+// 'global' struct
+typedef struct s_cfg
 {
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-@ thru CTRL-O
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-P thru CTRL+_
-	0, // SPACE
-	A_PUNCT, // !
-	A_PUNCT, // "
-	A_PUNCT, // #
-	A_PUNCT, // $
-	A_PUNCT, // %
-	A_PUNCT, // &
-	A_PUNCT|A_LETTER, // '
-	0, // (
-	0, // )
-	A_PUNCT, // *
-	A_PUNCT, // +
-	A_PUNCT, // ,
-	A_PUNCT, // -
-	A_PUNCT, // .
-	A_PUNCT, // /
-	A_DIGIT|A_PUNCT, // 0
-	A_DIGIT|A_PUNCT, // 1
-	A_DIGIT|A_PUNCT, // 2
-	A_DIGIT|A_PUNCT, // 3
-	A_DIGIT|A_PUNCT, // 4
-	A_DIGIT|A_PUNCT, // 5
-	A_DIGIT|A_PUNCT, // 6
-	A_DIGIT|A_PUNCT, // 7
-	A_DIGIT|A_PUNCT, // 8
-	A_DIGIT|A_PUNCT, // 9
-	A_PUNCT, // :
-	A_PUNCT, // ;
-	A_PUNCT, // <
-	A_PUNCT, // =
-	A_PUNCT, // >
-	A_PUNCT, // ?
-	A_PUNCT, // @
-	A_LETTER|A_VOWEL, // A
-	A_LETTER|A_CONS|A_VOICED, // B
-	A_LETTER|A_CONS|A_SIBIL, // C
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // D
-	A_LETTER|A_VOWEL, // E
-	A_LETTER|A_CONS, // F
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED, // G
-	A_LETTER|A_CONS, // H
-	A_LETTER|A_VOWEL, // I
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // J
-	A_LETTER|A_CONS, // K
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // L
-	A_LETTER|A_CONS|A_VOICED, // M
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // N
-	A_LETTER|A_VOWEL, // O
-	A_LETTER|A_CONS, // P
-	A_LETTER|A_CONS, // Q
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // R
-	A_LETTER|A_CONS|A_SIBIL|A_UAFF, // S
-	A_LETTER|A_CONS|A_UAFF, // T
-	A_LETTER|A_VOWEL, // U
-	A_LETTER|A_CONS|A_VOICED, // V
-	A_LETTER|A_CONS|A_VOICED, // W
-	A_LETTER|A_CONS|A_SIBIL, // X
-	A_LETTER|A_VOWEL, // Y
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // Z
-	0, // [
-	0, // '\'
-	0, // ]
-	A_PUNCT, // ^
-	0, // _
-	/// Technically, we can do a check for 0x60-0x7f and mirror it to 0x40-0x5f,
-	// but to make it so we can just do a simple validation of "is a valid ascii character <= 0x7f"
-	// and protect from out of bounds accesses using &0x7f; we repeat the 0x60-0x7f part here
-	A_PUNCT, // `
-	A_LETTER|A_VOWEL, // a
-	A_LETTER|A_CONS|A_VOICED, // b
-	A_LETTER|A_CONS|A_SIBIL, // c
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // d
-	A_LETTER|A_VOWEL, // e
-	A_LETTER|A_CONS, // f
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED, // g
-	A_LETTER|A_CONS, // h
-	A_LETTER|A_VOWEL, // i
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // j
-	A_LETTER|A_CONS, // k
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // l
-	A_LETTER|A_CONS|A_VOICED, // m
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // n
-	A_LETTER|A_VOWEL, // o
-	A_LETTER|A_CONS, // p
-	A_LETTER|A_CONS, // q
-	A_LETTER|A_CONS|A_VOICED|A_UAFF, // r
-	A_LETTER|A_CONS|A_SIBIL|A_UAFF, // s
-	A_LETTER|A_CONS|A_UAFF, // t
-	A_LETTER|A_VOWEL, // u
-	A_LETTER|A_CONS|A_VOICED, // v
-	A_LETTER|A_CONS|A_VOICED, // w
-	A_LETTER|A_CONS|A_SIBIL, // x
-	A_LETTER|A_VOWEL, // y
-	A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // z
-	0, // {
-	0, // |
-	0, // }
-	A_PUNCT, // ~
-	0, // DEL
-};
+	const u8 const ascii_features[0x80];
+	//sym_ruleset rules[RULES_TOTAL];
+	u32 verbose;
+} s_cfg;
 
-bool isIllegalPunct(char32_t in)
+//NRL isIllegalPunct: "[]\/"
+// probably SV equivalent is `return (ascii_features[in&0x7f]==0);`
+
+bool isPunct(char32_t in, s_cfg c)
 {
-	switch(in)
-	{
-		// []\/
-		case '[': case ']': case '\\': case '/':
-			return true;
-		default:
-			return false;
-	}
-	return false;
+	// NRL: " ,.?;:+*"$%&-<>!()='"
+	// SV: "!\"#$%\'*+,-./0123456789:;<=>?@^"
+	return c.ascii_features[in&0x7f]&A_PUNCT;
 }
 
-bool isPunct(char32_t in)
+//NRL isPunctNoSpace: return (isPunct(in)&& (in != ' '))
+
+bool isVowel(char32_t in, s_cfg c)
 {
-	switch(in)
-	{
-		//  ,.?;:+*"$%&-<>!()=
-		case ' ': case ',': case '.': case '?': case ';': case ':': case '+': case '*':
-		case '"': case '$': case '%': case '&': case '-': case '<': case '>': case '!':
-		case '(': case ')': case '=': case '\'':
-			return true;
-		default:
-			return false;
-	}
-	return false;
+	return c.ascii_features[in&0x7f]&A_VOWEL;
 }
 
-bool isPunctNoSpace(char32_t in)
+bool isConsonant(char32_t in, s_cfg c)
 {
-	if (in == ' ')
-		return false;
-	else return isPunct(in);
+	return c.ascii_features[in&0x7f]&A_CONS;
 }
 
-bool isVowel(char32_t in)
+bool isVoiced(char32_t in, s_cfg c)
 {
-	switch(in)
-	{
-		// AEIOUY
-		case 'A': case 'E': case 'I': case 'O': case 'U': case 'Y':
-		case 'a': case 'e': case 'i': case 'o': case 'u': case 'y':
-			return true;
-		default:
-			return false;
-	}
-	return false;
+	return c.ascii_features[in&0x7f]&A_VOICED;
 }
 
-bool isConsonant(char32_t in)
-{
-	switch(in)
-	{
-		// BCDFGHJKLMNPQRSTVWXZ
-		case 'B': case 'C': case 'D': case 'F': case 'G': case 'H': case 'J': case 'K': case 'L': case 'M': case 'N': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'V': case 'W': case 'X': case 'Z':
-		case 'b': case 'c': case 'd': case 'f': case 'g': case 'h': case 'j': case 'k': case 'l': case 'm': case 'n': case 'p': case 'q': case 'r': case 's': case 't': case 'v': case 'w': case 'x': case 'z':
-			return true;
-		default:
-			return false;
-	}
-	return false;
-}
+// NRL isFront: return ((in == 'E')||(in == 'I')||(in == 'Y'));
 
-bool isVoiced(char32_t in)
-{
-	switch(in)
-	{
-		// BDVGJLMNRWZ
-		case 'B': case 'D': case 'V': case 'G': case 'J': case 'L': case 'M': case 'N': case 'R': case 'W': case 'Z':
-		case 'b': case 'd': case 'v': case 'g': case 'j': case 'l': case 'm': case 'n': case 'r': case 'w': case 'z':
-			return true;
-		default:
-			return false;
-	}
-	return false;
-}
+// preprocess passes: these each turn a vec_char32* list into another vec_char32* list starting at a given offset, return the final offset+1
 
-bool isFront(char32_t in)
-{
-	switch(in)
-	{
-		// EIY
-		case 'E': case 'I': case 'Y':
-		case 'e': case 'i': case 'y':
-			return true;
-		default:
-			return false;
-	}
-	return false;
-}
-
-// preprocess a vec_char32* list into another vec_char32* list starting at a given offset, return the final offset+1
-u32 preprocess(vec_char32* in, vec_char32* out, u32 in_offset)
+// preprocess 1: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
+u32 preprocess(vec_char32* in, vec_char32* out, s_cfg c)
 {
 	// prepend a space to output
 	vec_char32_append(out, ' ');
 	// iterate over input
 	u32 i;
-	for (i = in_offset; i < in->elements; i++)
+	for (i = 0; i < in->elements; i++)
 	{
-		if (in->data[i] == '#') // early return: end marker
-		{
-			return i+1;
-		}
-		else if (isIllegalPunct(in->data[i]))
-		{
-			//v_printf(V_DEBUG,"got illegal punctuation of '%c'\n",in->data[i]);
-			continue; // skip illegal punctuation characters
-		}
-		else if (isPunctNoSpace(in->data[i])) // special case for punctuation
-		{
-			//v_printf(V_DEBUG,"got non-space punctuation of '%c'\n",in->data[i]);
-			vec_char32_append(out, ' ');
-			vec_char32_append(out, in->data[i]);
-			vec_char32_append(out, ' ');
-		}
-		else if (in->data[i] == ' ') // special case for space, make sure we do not append successive spaces
-		{
-			//v_printf(V_DEBUG,"got space punctuation of '%c'\n",in->data[i]);
-			if ((out->elements > 0) && (out->data[out->elements-1] != ' '))
-			{
-				vec_char32_append(out, in->data[i]);
-			}
-		}
-		else if (isalpha(in->data[i]) || isdigit(in->data[i]))
-		{
-			//v_printf(V_DEBUG,"got alphanumeric of '%c'\n",in->data[i]);
-			vec_char32_append(out, toupper(in->data[i]));
-		}
-		else v_printf(V_DEBUG,"Unknown character 0x%x in input stream\n", in->data[i]);
+		vec_char32_append(out, toupper(in->data[i]));
 	}
-	// reached end of input, i.e. an implicit '#'
+	// reached end of input, add a terminating character (usually 0x1b, ESC)
+	vec_char32_append(out, RECITER_TERM_CHAR);
 	return i; // we incremented past the end of input, so just return i
 }
 
@@ -449,118 +261,16 @@ s32 strnfind(const char *src, int c, size_t n)
 #define FRONT '+'
 #define CONS0M ':'
 
-bool matchRule(const char const rule, const char32_t const input)
-{
-
-}
-
-bool parseLeft(const char* const rule, const vec_char32* const input, const u32 rpinit, const u32 inpos)
-{
-	// rule[rulepos] points to the rule symbol being evaluated
-	// input->data[inpos] points to the input symbol being evaluated
-	s32 rulepos = rpinit;
-	// the leftmost valid input character is technically inpos of 0
-	while (rulepos > 0)
-	{
-		bool rulepass = false;
-		switch(rule[rulepos])
-		{
-			case VOWEL1M: // 1 or more vowels
-				if (isVowel(input->data[inpos]))
-				{
-					rulepass = true;
-					// we got at least one vowel, call this function repeatedly in a loop
-					// consuming more vowels from input-1 until either input-1 becomes -1 OR
-					// we hit a non-vowel, then terminate and leave inpos at that failing position
-				}
-			case CONS1:
-				break; // TODO
-			
-		}
-	}
-	return false;
-}
-
-bool parseRight()
-{
-	return false;
-}
-
-bool parseRule(const char* const rule, const vec_char32* const input, const u32 inpos)
-{
-	u32 ruleLen = strlen(rule);
-	// find left end
-	s32 left = strnfind(rule, '[', ruleLen);
-	if (left != 0)
-	{
-		// match left part of rule
-		// early out: if the rule is not ':' which is 'zero or more' of a symbol
-		//   AND this is the leftmost character of the input string, just die immediately
-		//   and fail the rule, otherwise continue
-		if ((rule[left-1] != CONS0M) && (inpos == 0))
-		{
-			return false;
-		}
-		// call parseLeft which recursively calls itself and returns true if the rule matches and false if it doesn't.
-		if (!parseLeft(rule, input, left-1, inpos))
-		{
-			return false;
-		}
-	}
-	v_printf(V_DEBUG,"Left half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
-	// find right end
-	s32 right = strnfind(rule, ']', ruleLen);
-	if (rule[right+1] != '=')
-	{
-		// call parseRight which recursively calls itself and returns true if the rule matches and false if it doesn't.
-		if (!parseRight(rule, input, right+1, inpos))
-		{
-			return false;
-		}
-	}
-	v_printf(V_DEBUG,"Right half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
-	return true;
-}
-
-s32 applyRule(const char* const rule)
-{
-	u32 ruleLen = strlen(rule);
-	// search through the rule string for the [
-	s32 first = strnfind(rule, '[', ruleLen);
-	if (first == -1) return -1; // early out for invalid rule
-	// search through the rule string for the ]
-	s32 last = strnfind(rule, ']', ruleLen);
-	// return the number of characters between those two.
-	return (last-first)-1;
-}
-
 s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const input, const u32 inpos)
 {
-	// find ruleset for this letter/punct/etc
-	u32 rulenum = getRuleNum(input->data[inpos]);
-	// iterate over every one of these rules and halt on the first match
-	for (u32 i = 0; i < ruleset[rulenum].num_rules; i++)
-	{
-		v_printf(V_DEBUG, "found a rule %s\n", ruleset[rulenum].rule[i]);
-		if (applyRule(ruleset[rulenum].rule[i]) < 0)
-		{
-			v_printf(V_DEBUG,"ERROR: encountered an invalid rule for character at position %d (%c)!\n", inpos, input->data[inpos]);
-			exit(1);
-		}
-		//v_printf(V_DEBUG, "this rule would consume %d characters\n", applyRule(ruleset[rulenum].rule[i]));
-		if (parseRule(ruleset[rulenum].rule[i], input, inpos))
-		{
-			return applyRule(ruleset[rulenum].rule[i]);
-		}
-	}
-	return 0;
+	return 1;
 }
 
-void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input)
+void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input, s_cfg c)
 {
 	u32 curpos = 0;
 	v_printf(V_DEBUG, "processPhrase called, phrase has %d elements\n", input->elements);
-	while (curpos <= input->elements)
+	while (curpos < input->elements)
 	{
 		v_printf(V_DEBUG, "position is now %d (%c)\n", curpos, input->data[curpos]);
 		u32 oldpos = curpos;
@@ -586,7 +296,111 @@ int main(int argc, char **argv)
 {
 	s_cfg c =
 	{
-		0, // verbose
+		{ // ascii_features rules set
+			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-@ thru CTRL-O
+			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-P thru CTRL+_
+			0, // SPACE
+			A_PUNCT, // !
+			A_PUNCT, // "
+			A_PUNCT, // #
+			A_PUNCT, // $
+			A_PUNCT, // %
+			A_PUNCT, // &
+			A_PUNCT|A_LETTER, // '
+			0, // (
+			0, // )
+			A_PUNCT, // *
+			A_PUNCT, // +
+			A_PUNCT, // ,
+			A_PUNCT, // -
+			A_PUNCT, // .
+			A_PUNCT, // /
+			A_DIGIT|A_PUNCT, // 0
+			A_DIGIT|A_PUNCT, // 1
+			A_DIGIT|A_PUNCT, // 2
+			A_DIGIT|A_PUNCT, // 3
+			A_DIGIT|A_PUNCT, // 4
+			A_DIGIT|A_PUNCT, // 5
+			A_DIGIT|A_PUNCT, // 6
+			A_DIGIT|A_PUNCT, // 7
+			A_DIGIT|A_PUNCT, // 8
+			A_DIGIT|A_PUNCT, // 9
+			A_PUNCT, // :
+			A_PUNCT, // ;
+			A_PUNCT, // <
+			A_PUNCT, // =
+			A_PUNCT, // >
+			A_PUNCT, // ?
+			A_PUNCT, // @
+			A_LETTER|A_VOWEL, // A
+			A_LETTER|A_CONS|A_VOICED, // B
+			A_LETTER|A_CONS|A_SIBIL, // C
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // D
+			A_LETTER|A_VOWEL, // E
+			A_LETTER|A_CONS, // F
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED, // G
+			A_LETTER|A_CONS, // H
+			A_LETTER|A_VOWEL, // I
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // J
+			A_LETTER|A_CONS, // K
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // L
+			A_LETTER|A_CONS|A_VOICED, // M
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // N
+			A_LETTER|A_VOWEL, // O
+			A_LETTER|A_CONS, // P
+			A_LETTER|A_CONS, // Q
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // R
+			A_LETTER|A_CONS|A_SIBIL|A_UAFF, // S
+			A_LETTER|A_CONS|A_UAFF, // T
+			A_LETTER|A_VOWEL, // U
+			A_LETTER|A_CONS|A_VOICED, // V
+			A_LETTER|A_CONS|A_VOICED, // W
+			A_LETTER|A_CONS|A_SIBIL, // X
+			A_LETTER|A_VOWEL, // Y
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // Z
+			0, // [
+			0, // '\'
+			0, // ]
+			A_PUNCT, // ^
+			0, // _
+			/// Technically, we can do a check for 0x60-0x7f and mirror it to 0x40-0x5f,
+			// but to make it so we can just do a simple validation of "is a valid ascii character <= 0x7f"
+			// and protect from out of bounds accesses using &0x7f; we repeat the 0x60-0x7f part here
+			A_PUNCT, // `
+			A_LETTER|A_VOWEL, // a
+			A_LETTER|A_CONS|A_VOICED, // b
+			A_LETTER|A_CONS|A_SIBIL, // c
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // d
+			A_LETTER|A_VOWEL, // e
+			A_LETTER|A_CONS, // f
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED, // g
+			A_LETTER|A_CONS, // h
+			A_LETTER|A_VOWEL, // i
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // j
+			A_LETTER|A_CONS, // k
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // l
+			A_LETTER|A_CONS|A_VOICED, // m
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // n
+			A_LETTER|A_VOWEL, // o
+			A_LETTER|A_CONS, // p
+			A_LETTER|A_CONS, // q
+			A_LETTER|A_CONS|A_VOICED|A_UAFF, // r
+			A_LETTER|A_CONS|A_SIBIL|A_UAFF, // s
+			A_LETTER|A_CONS|A_UAFF, // t
+			A_LETTER|A_VOWEL, // u
+			A_LETTER|A_CONS|A_VOICED, // v
+			A_LETTER|A_CONS|A_VOICED, // w
+			A_LETTER|A_CONS|A_SIBIL, // x
+			A_LETTER|A_VOWEL, // y
+			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // z
+			0, // {
+			0, // |
+			0, // }
+			A_PUNCT, // ~
+			0 // DEL
+		},
+		//NULL, // letter to sound rules
+		1, // verbose (was 0)
 	};
 
 	//{
@@ -1062,9 +876,37 @@ int main(int argc, char **argv)
 			{ sizeof(numberrule_eng)/sizeof(*numberrule_eng), numberrule_eng },
 		};
 	//}
-	if (argc != NUM_PARAMETERS+1)
+
+	// handle optional parameters
+	u32 paramidx = 2;
+	while (paramidx <= (argc-1))
 	{
-		fprintf(stderr,"E* Incorrect number of parameters!\n"); fflush(stderr);
+		switch (*(argv[paramidx]++))
+		{
+			case '-':
+				// skip this character.
+				break;
+			case 'v':
+				paramidx++;
+				if (paramidx == (argc-0)) { v_printf(V_ERR,"E* Too few arguments for -v parameter!\n"); usage(); exit(1); }
+				if (!sscanf(argv[paramidx], "%d", &c.verbose)) { v_printf(V_ERR,"E* Unable to parse argument for -v parameter!\n"); usage(); exit(1); }
+				paramidx++;
+				break;
+			case '\0':
+				// end of string for parameter, go to next param
+				paramidx++;
+				break;
+			default:
+				{ v_printf(V_ERR,"E* Invalid option!\n"); usage(); exit(1); }
+				break;
+		}
+	}
+	v_printf(V_PARAM,"D* Parameters: verbose: %d\n", c.verbose);
+
+
+	if (argc < 2)
+	{
+		fprintf(stderr,"E* Too few parameters!\n"); fflush(stderr);
 		usage();
 		return 1;
 	}
@@ -1118,50 +960,39 @@ int main(int argc, char **argv)
 	// actual program goes here
 
 	// allocate a vector
-	vec_char32* d_in = vec_char32_alloc(4);
+	vec_char32* d_raw = vec_char32_alloc(4);
 
 	// read contents of dataArray into vec_char32
 	for (u32 i = 0; i < len; i++)
 	{
-		vec_char32_append(d_in,dataArray[i]);
+		vec_char32_append(d_raw,dataArray[i]);
 	}
 	v_printf(V_DEBUG,"Input phrase stats are:\n");
-	vec_char32_dbg_stats(d_in);
-	vec_char32_dbg_print(d_in);
+	vec_char32_dbg_stats(d_raw);
+	vec_char32_dbg_print(d_raw);
 
 	// free the input array
 	free(dataArray);
 	dataArray = NULL;
 
-	// we may have multiple phrases in the input file, so handle each one here sequentially.
-	{ // scope limiter for done, phrase_offset
-		bool done = false;
-		u32 phrase_offset = 0;
-		while (!done)
-		{
-			// allocate another vector for preprocessing
-			vec_char32* d_pre = vec_char32_alloc(4);
-			// preprocess d_in into d_pre
-			phrase_offset = preprocess(d_in, d_pre, phrase_offset);
-			v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
-			vec_char32_dbg_stats(d_pre);
-			vec_char32_dbg_print(d_pre);
-			v_printf(V_DEBUG,"Input phrase offset is now %d\n", phrase_offset);
+	u32 phrase_len = 0;
+	// allocate another vector for preprocessing
+	vec_char32* d_in = vec_char32_alloc(4);
+	// preprocess d_raw into d_in
+	phrase_len = preprocess(d_raw, d_in, c);
+	vec_char32_free(d_raw);
+
+	v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
+	vec_char32_dbg_stats(d_in);
+	vec_char32_dbg_print(d_in);
+	v_printf(V_DEBUG,"Input phrase length is now %d\n", phrase_len);
+
 	
-			// do stuff with preprocessed phrase here
-			// i.e. the rest of the owl
-			processPhrase(ruleset, d_pre);
-	
-			vec_char32_free(d_pre);
-			if (phrase_offset >= d_in->elements)
-			{
-				done = true;
-			}
-			// HACK: for now, just end after the first phrase; later we need to make sure CR/LF etc get nuked properly;
-			done = true;
-		}
-	}
+	// do stuff with preprocessed phrase here
+	// i.e. the rest of the owl
+	processPhrase(ruleset, d_in, c);
 	vec_char32_free(d_in);
+
 
 	//fprintf(stdout,"trying to print size of arule array, should be 33\n");
 	//fprintf(stdout,"sizeof(arule_eng): %d\n", sizeof(arule_eng));
