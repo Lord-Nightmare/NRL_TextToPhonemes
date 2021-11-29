@@ -19,10 +19,9 @@ typedef int64_t s64;
 typedef uint64_t u64;
 
 // magic numbers
-#define RULES_TOTAL 28
-#define RULES_PUNCT 0
-#define RULES_NUMBERS 27
-#define RECITER_TERM_CHAR 0x2b
+#define RULES_TOTAL 27
+#define RULES_PUNCT_DIGIT 26
+#define RECITER_END_CHAR 0x1b
 
 // verbose macros
 #define v_printf(v, ...) \
@@ -165,6 +164,11 @@ typedef struct s_cfg
 //NRL isIllegalPunct: "[]\/"
 // probably SV equivalent is `return (ascii_features[in&0x7f]==0);`
 
+bool isDigit(char32_t in, s_cfg c)
+{
+	return c.ascii_features[in&0x7f]&A_DIGIT;
+}
+
 bool isPunct(char32_t in, s_cfg c)
 {
 	// NRL: " ,.?;:+*"$%&-<>!()='"
@@ -194,26 +198,24 @@ bool isVoiced(char32_t in, s_cfg c)
 // preprocess passes: these each turn a vec_char32* list into another vec_char32* list starting at a given offset, return the final offset+1
 
 // preprocess 1: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
-u32 preprocess(vec_char32* in, vec_char32* out, s_cfg c)
+void preProcess(vec_char32* in, vec_char32* out, s_cfg c)
 {
 	// prepend a space to output
 	vec_char32_append(out, ' ');
 	// iterate over input
-	u32 i;
-	for (i = 0; i < in->elements; i++)
+	for (u32 i = 0; i < in->elements; i++)
 	{
 		vec_char32_append(out, toupper(in->data[i]));
 	}
 	// reached end of input, add a terminating character (usually 0x1b, ESC)
-	vec_char32_append(out, RECITER_TERM_CHAR);
-	return i; // we incremented past the end of input, so just return i
+	vec_char32_append(out, RECITER_END_CHAR);
 }
 
 u32 getRuleNum(char32_t input)
 {
 	if (isdigit(input))
 	{
-		return RULES_NUMBERS;
+		return RULES_PUNCT_DIGIT;
 	}
 	else if (isalpha(input))
 	{
@@ -221,7 +223,7 @@ u32 getRuleNum(char32_t input)
 	}
 	else
 	{
-		return RULES_PUNCT;
+		return RULES_PUNCT_DIGIT;
 	}
 }
 
@@ -261,24 +263,63 @@ s32 strnfind(const char *src, int c, size_t n)
 #define FRONT '+'
 #define CONS0M ':'
 
-s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const input, const u32 inpos)
+s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, const u32 inpos, vec_char32* output, s_cfg c)
 {
-	return 1;
+	return inpos+1; // TODO
 }
 
-void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input, s_cfg c)
+void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input, vec_char32* output, s_cfg c)
 {
-	u32 curpos = 0;
 	v_printf(V_DEBUG, "processPhrase called, phrase has %d elements\n", input->elements);
-	while (curpos < input->elements)
+	s32 inpos = -1;
+	s32 outpos = -1;
+	char32_t inptemp;
+	while (((inptemp = input->data[++inpos])||(1)) && (inptemp != RECITER_END_CHAR)) // was (curpos < input->elements)
 	{
-		v_printf(V_DEBUG, "position is now %d (%c)\n", curpos, input->data[curpos]);
-		u32 oldpos = curpos;
-		curpos += processLetter(ruleset, input, curpos);
-		if (curpos - oldpos == 0)
+		v_printf(V_DEBUG, "position is now %d (%c)\n", inpos, input->data[inpos]);
+		if (input->data[inpos] == '.') // is this character a period?
 		{
-			v_printf(V_DEBUG,"WARNING: unable to match any rule for position %d (%c)!\n", curpos, input->data[curpos]);
-			curpos++;
+			v_printf(V_DEBUG, "character is a period...");
+			if (isDigit(input->data[++inpos], c)) // is the character after the period a digit?
+			{
+				v_printf(V_DEBUG, " followed by a digit...");
+				u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
+				if (isPunct(inptemp, c)) // if the initial character was punctuation
+				{
+					v_printf(V_DEBUG, " and the character before the period was a punctuation symbol!\n");
+					// look up PUNCT_DIGIT rules
+					inpos = processRule(ruleset[RULES_PUNCT_DIGIT], input, inpos, output, c);
+					// THIS CASE IS FINISHED
+				}
+				else
+				{
+					v_printf(V_DEBUG, " but the character before the period was not a punctuation symbol.\n");
+
+				}
+			}
+			else
+			{
+				v_printf(V_DEBUG, " but not followed by a digit, so treat it as a pause.\n");
+				vec_char32_append(output, '.'); // add a period to the output word.
+				/// THIS CASE IS FINISHED
+			}
+		}
+		else
+		{
+			//v_printf(V_DEBUG, "character is not a period...");
+			u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
+			if (isPunct(inptemp, c)) // if the initial character was punctuation
+			{
+				v_printf(V_DEBUG, " and the initial character was a punctuation symbol!\n");
+				// look up PUNCT_DIGIT rules
+				inpos = processRule(ruleset[RULES_PUNCT_DIGIT], input, inpos, output, c);
+				// THIS CASE IS FINISHED
+			}
+			else
+			{
+				v_printf(V_DEBUG, " but the initial charater was not a punctuation symbol.\n");
+
+			}
 		}
 	}
 }
@@ -404,21 +445,6 @@ int main(int argc, char **argv)
 	};
 
 	//{
-		const char* const punctrule_eng[] =
-		{
-			"[ ]'=/ /",
-			"[ - ]=/ /",
-			"[ ]=/< >/",
-			"[-]=/<->/",
-			". [' S]=/Z/",
-			"#:.E [' S]=/Z/",
-			"# [' S]=/Z/",
-			"[' ]=/ /",
-			"[,]=/<,>/",
-			"[.]=/<.>/",
-			"[?]=/<?>/",
-		};
-
 		const char* const arule_eng[] =
 		{
 			"[A] =/AX/",
@@ -831,8 +857,19 @@ int main(int argc, char **argv)
 			"[Z]=/Z/",
 		};
 
-		const char* const numberrule_eng[] =
+		const char* const punct_num_rule_eng[] =
 		{
+			"[ ]'=/ /",
+			"[ - ]=/ /",
+			"[ ]=/< >/",
+			"[-]=/<->/",
+			". [' S]=/Z/",
+			"#:.E [' S]=/Z/",
+			"# [' S]=/Z/",
+			"[' ]=/ /",
+			"[,]=/<,>/",
+			"[.]=/<.>/",
+			"[?]=/<?>/",
 			"[0]=/Z IH R OW/",
 			"[1]=/W AH N/",
 			"[2]=/T UW/",
@@ -846,7 +883,6 @@ int main(int argc, char **argv)
 		};
 		sym_ruleset ruleset[RULES_TOTAL] =
 		{
-			{ sizeof(punctrule_eng)/sizeof(*punctrule_eng), punctrule_eng },
 			{ sizeof(arule_eng)/sizeof(*arule_eng), arule_eng },
 			{ sizeof(brule_eng)/sizeof(*brule_eng), brule_eng },
 			{ sizeof(crule_eng)/sizeof(*crule_eng), crule_eng },
@@ -873,7 +909,7 @@ int main(int argc, char **argv)
 			{ sizeof(xrule_eng)/sizeof(*xrule_eng), xrule_eng },
 			{ sizeof(yrule_eng)/sizeof(*yrule_eng), yrule_eng },
 			{ sizeof(zrule_eng)/sizeof(*zrule_eng), zrule_eng },
-			{ sizeof(numberrule_eng)/sizeof(*numberrule_eng), numberrule_eng },
+			{ sizeof(punct_num_rule_eng)/sizeof(*punct_num_rule_eng), punct_num_rule_eng },
 		};
 	//}
 
@@ -975,24 +1011,26 @@ int main(int argc, char **argv)
 	free(dataArray);
 	dataArray = NULL;
 
-	u32 phrase_len = 0;
 	// allocate another vector for preprocessing
 	vec_char32* d_in = vec_char32_alloc(4);
 	// preprocess d_raw into d_in
-	phrase_len = preprocess(d_raw, d_in, c);
+	preProcess(d_raw, d_in, c);
 	vec_char32_free(d_raw);
 
 	v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
 	vec_char32_dbg_stats(d_in);
 	vec_char32_dbg_print(d_in);
-	v_printf(V_DEBUG,"Input phrase length is now %d\n", phrase_len);
 
-	
-	// do stuff with preprocessed phrase here
-	// i.e. the rest of the owl
-	processPhrase(ruleset, d_in, c);
+	// do stuff with preprocessed phrase here, i.e. the rest of the owl
+	// allocate another vector for output
+	vec_char32* d_out = vec_char32_alloc(4);
+	processPhrase(ruleset, d_in, d_out, c);
 	vec_char32_free(d_in);
+	v_printf(V_DEBUG,"Processing done, stats are now:\n");
+	vec_char32_dbg_stats(d_out);
+	vec_char32_dbg_print(d_out);
 
+	vec_char32_free(d_out);
 
 	//fprintf(stdout,"trying to print size of arule array, should be 33\n");
 	//fprintf(stdout,"sizeof(arule_eng): %d\n", sizeof(arule_eng));
