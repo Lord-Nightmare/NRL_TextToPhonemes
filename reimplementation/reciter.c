@@ -178,9 +178,20 @@ bool isPunct(char32_t in, s_cfg c)
 
 //NRL isPunctNoSpace: return (isPunct(in)&& (in != ' '))
 
-bool isVowel(char32_t in, s_cfg c)
+
+bool isUaff(char32_t in, s_cfg c)
 {
-	return c.ascii_features[in&0x7f]&A_VOWEL;
+	return c.ascii_features[in&0x7f]&A_UAFF;
+}
+
+bool isVoiced(char32_t in, s_cfg c)
+{
+	return c.ascii_features[in&0x7f]&A_VOICED;
+}
+
+bool isSibil(char32_t in, s_cfg c)
+{
+	return c.ascii_features[in&0x7f]&A_SIBIL;
 }
 
 bool isConsonant(char32_t in, s_cfg c)
@@ -188,9 +199,14 @@ bool isConsonant(char32_t in, s_cfg c)
 	return c.ascii_features[in&0x7f]&A_CONS;
 }
 
-bool isVoiced(char32_t in, s_cfg c)
+bool isVowel(char32_t in, s_cfg c)
 {
-	return c.ascii_features[in&0x7f]&A_VOICED;
+	return c.ascii_features[in&0x7f]&A_VOWEL;
+}
+
+bool isLetter(char32_t in, s_cfg c)
+{
+	return c.ascii_features[in&0x7f]&A_LETTER;
 }
 
 // NRL isFront: return ((in == 'E')||(in == 'I')||(in == 'Y'));
@@ -272,47 +288,168 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 	{
 		v_printf(V_DEBUG, "found a rule %s\n", ruleset.rule[i]);
 		// part 1: check the exact match section of the rule, between the parentheses
-		// (and get the indexes to the two parentheses, which will be used in parts 2 and 3)
-		s32 leftparen = -1;
-		s32 rightparen = -1;
-		int offset = 0; // offset within rule of exact match
+		// (and get the indexes to the two parentheses and the equals symbol, which will be used in parts 2 and 3)
+		s32 lparen_idx = -1;
+		s32 rparen_idx = -1;
+		s32 equals_idx = -1;
 		/* slow but safe... */
 		u32 rulelen = strlen(ruleset.rule[i]);
-		leftparen = strnfind(ruleset.rule[i], LPAREN, rulelen);
-		rightparen = strnfind(ruleset.rule[i], RPAREN, rulelen);
-		v_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d\n", leftparen, rightparen);
+		lparen_idx = strnfind(ruleset.rule[i], LPAREN, rulelen);
+		rparen_idx = strnfind(ruleset.rule[i], RPAREN, rulelen);
+		equals_idx = strnfind(ruleset.rule[i], '=', rulelen);
+		v_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d, equals found at %d\n", lparen_idx, rparen_idx, equals_idx);
 
-		/* faster but unsafe... will run off the end of the array if no RPAREN found */
-		leftparen = -1;
-		for (rightparen = 0; ruleset.rule[i][rightparen] != RPAREN; rightparen++)
+		/* faster but less safe... will run off the end of the rule string if a rule has no equals sign and doesn't end with a NULL '/0'
+		 (which should never happen) */
+		lparen_idx = -1;
+		rparen_idx = -1;
+		equals_idx = -1;
+		/*for (rparen_idx = 0; ruleset.rule[i][rparen_idx] != RPAREN; rparen_idx++)
 		{
-			if (ruleset.rule[i][rightparen] == LPAREN)
-				leftparen = rightparen;
+			if (ruleset.rule[i][rparen_idx] == LPAREN)
+				lparen_idx = rparen_idx;
+		}*/
+		for (equals_idx = 0; ((ruleset.rule[i][equals_idx] != '=') && (ruleset.rule[i][equals_idx] != '\0')); equals_idx++)
+		{
+			if (ruleset.rule[i][equals_idx] == LPAREN)
+				lparen_idx = equals_idx;
+			if (ruleset.rule[i][equals_idx] == RPAREN)
+				rparen_idx = equals_idx;
 		}
-		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d\n", leftparen, rightparen);
+		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d\n", lparen_idx, rparen_idx, equals_idx);
+		int n = (rparen_idx - 1) - (lparen_idx + 1); // number of letters in exact match part of the rule
 		
 		// part1: compare exact match; basically a slightly customized 'strncmp()'
 		{
-			int n = (rightparen - 1) - (leftparen + 1);
-			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][leftparen+offset]) )
+			int offset = 0; // offset within rule of exact match
+			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+offset]) )
 			{
 				offset++;
 				n--;
 			}
 			v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
 			if (n != 0) continue; // mismatch, go to next rule.
+			// if we got here, the fixed part of the rule matched.
+			v_printf(V_DEBUG, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], lparen_idx+1);
 		}
-		// if we got here, the fixed part of the rule matched.
-		v_printf(V_DEBUG, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], leftparen+1);
 
 		// part2: match the rule prefix
-		/// TODO
+		{
+			bool fail = false;
+			bool finished = false;
+			s32 ruleoffset = -1;
+			s32 inpoffset = -1;
+			while ((!fail)&&(!finished))
+			{
+				int rulechar = ruleset.rule[i][lparen_idx+ruleoffset];
+				int inpchar = input->data[inpos+inpoffset];
+				if (isLetter(rulechar, c)) // letter in rule matches that letter exactly, only.
+				{
+					// it's a letter, directly compare it to the input character
+					if (rulechar == prevchar)
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == ' ') // space matches any non-letter
+				{
+					if (!isLetter(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '#') // # matches any vowel
+				{
+					if (isVowel(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '.') // . matches any voiced consonant
+				{
+					if (isVoiced(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '&') // & matches any sibilant; note the special cases for CH and SH
+				{
+					if (isSibil(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else if (inpchar == 'H') // could be CH or SH!
+					{
+						inpoffset--;
+						inpchar = input->data[inpos+inpoffset]; // load another char...
+						if ((inpchar2 == 'C') || (inpchar2 == 'S'))
+						{
+							// we have a match, back the offsets off each by 1
+							ruleoffset--;
+							inpoffset--;
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+			}
+			if (fail) continue; // mismatch, move on to the next rule.
+			/// TODO
+		}
 		
 		// part3: match the rule suffix
-		/// TODO
+		{
+			/// TODO
+		}
 		
 		// if we got this far, dump the rule right hand side past the = sign to output, then
 		// consume the number of characters between the parentheses by returning inpos + that number
+		{
+			// crude strcpy
+			while (ruleset.rule[i][++equals_idx] != '\0')
+			{
+				vec_char32_append(output, ruleset.rule[i][equals_idx]);
+			}
+			return inpos+n;
+		}
 	}
 	// did we break out with a valid rule?
 	if (i == ruleset.num_rules)
@@ -320,7 +457,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		v_printf(V_ERR, "unable to find any matching rule, exiting!\n");
 		exit(1);
 	}
-	return inpos+1; // TODO
+	return inpos; // TODO
 }
 
 void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input, vec_char32* output, s_cfg c)
@@ -350,7 +487,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 					v_printf(V_DEBUG, " but the character before the period was not a punctuation symbol.\n");
 					if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
 					{
-						//TODO: original code clobbers the input string character with a space as well
+						//TODO(optional): original code clobbers the input string character with a space as well
 						vec_char32_append(output, ' '); // add a space to the output word.
 						// THIS CASE IS FINISHED
 					}
@@ -393,7 +530,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 				v_printf(V_DEBUG, " but the initial charater was not a punctuation symbol.\n");
 				if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
 				{
-					//TODO: original code clobbers the input string character with a space as well
+					//TODO(optional): original code clobbers the input string character with a space as well
 					vec_char32_append(output, ' '); // add a space to the output word.
 					// THIS CASE IS FINISHED
 				}
