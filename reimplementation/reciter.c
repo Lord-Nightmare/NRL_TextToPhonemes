@@ -333,11 +333,33 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		// part1: compare exact match; basically a slightly customized 'strncmp()'
 		{
 			int offset = 0; // offset within rule of exact match
-			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+offset]) )
+			/*
+			while ( n && (input->data[inpos+offset]) && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+1+offset]) )
 			{
-				v_printf(V_DEBUG, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+offset] );
+				v_printf(V_DEBUG, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+1+offset] );
 				offset++;
 				n--;
+			}
+			*/
+			for (; n > 0; n--)
+			{
+				if (!input->data[inpos+offset])
+				{
+					v_printf(V_DEBUG, "strncmp got null/end of string, bailing out!\n");
+					break;
+				}
+				else
+				{
+					v_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
+					if (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+1+offset])
+					{
+						offset++;
+					}
+					else
+					{
+						break;
+					}
+				}
 			}
 			v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
 			if (n != 0) continue; // mismatch, go to next rule.
