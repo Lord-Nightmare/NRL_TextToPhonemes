@@ -1,5 +1,8 @@
-// license:License-shortname
-// copyright-holders:copyright holder names, comma delimited
+// license:MIT
+// copyright-holders:Jonathan Gevaryahu
+// Reimplementation of the Don't Ask Computer Software/Softvoice 'reciter'/'translator' engine
+// Preliminary version using NRL ruleset, this is very incomplete.
+// Copyright (C)2021 Jonathan Gevaryahu
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -215,7 +218,7 @@ bool isFront(char32_t in, s_cfg c)
 	return ((in == 'E')||(in == 'I')||(in == 'Y'));
 }
 
-// preprocess: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
+// preprocess: add a leading space, and turn all characters from lowercase into capital letters.
 void preProcess(vec_char32* in, vec_char32* out, s_cfg c)
 {
 	// prepend a space to output
@@ -332,6 +335,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			int offset = 0; // offset within rule of exact match
 			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+offset]) )
 			{
+				fprintf(stderr, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+offset] ); fflush(stderr);
 				offset++;
 				n--;
 			}
@@ -523,6 +527,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
+						ruleoffset--;
 						while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
 						{
 							inpoffset--;
@@ -707,7 +712,6 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						inpoffset += 2;
 					}
 #endif
-					}
 					else
 					{
 						// mismatch
@@ -753,7 +757,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				}
 				else if (rulechar == '%') // % matches 'E', 'ER', 'ES', 'ED', 'ELY', 'EFUL', and 'ING'
 				{
-					if (inpchar == 'E') // 'E', 'ER', 'ES', 'ED', 'ELY', 'EFUL'; if this check passes, this test can't fail outright unless we run out of input
+					if (inpchar == 'E') // 'E', 'ER', 'ES', 'ED', 'ELY', 'EFUL'; if this check for 'E' passes, this test can't fail outright unless we run out of input
 					{
 						// we have a match
 						ruleoffset++;
@@ -804,8 +808,9 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
+						ruleoffset++;
 						inpoffset++;
-						while (isCons(inpchar,c) && (inpos+inpoffset < input->elements))
+						while ((inpos+inpoffset <= (input->elements-1)) && isCons(inpchar,c))
 						{
 							inpoffset++;
 							inpchar = input->data[inpos+inpoffset];
