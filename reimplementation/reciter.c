@@ -259,7 +259,7 @@ s32 strnfind(const char *src, int c, size_t n)
 	return -1;
 }
 
-// symbols
+// symbols from NRL paper:
 /*
 *       # = 1 OR MORE VOWELS
 *       * = 1 OR MORE CONSONANTS
@@ -273,6 +273,7 @@ s32 strnfind(const char *src, int c, size_t n)
 *       + = A FRONT VOWEL: 'E','I','Y'
 *       : = 0 OR MORE CONSONANTS
 */
+// Note that reciter treats # as 'exactly one vowel', not 'one or more'
 #define VOWEL1M '#'
 #define CONS1M '*'
 #define VOICED '.'
@@ -1405,6 +1406,7 @@ int main(int argc, char **argv)
 			"#^:#[S] =/S/",
 			"U[S] =/S/",
 			" :#[S] =/Z/",
+			":#E[S] =/Z/", // this is a new rule added to handle the degenerate case with SHOES PIES PARRIES MARRIES etc where reciter considers # to be one vowel but the NRL rules consider it 'one or more' and require a recursive parser to parse sanely (triggering the rule above this one)
 			" [SCH]=/S K/",
 			"[S]C+=/ /",
 			"#[SM]=/Z M/",
