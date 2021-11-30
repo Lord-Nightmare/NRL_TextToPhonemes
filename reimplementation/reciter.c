@@ -194,7 +194,7 @@ bool isSibil(char32_t in, s_cfg c)
 	return c.ascii_features[in&0x7f]&A_SIBIL;
 }
 
-bool isConsonant(char32_t in, s_cfg c)
+bool isCons(char32_t in, s_cfg c)
 {
 	return c.ascii_features[in&0x7f]&A_CONS;
 }
@@ -209,7 +209,11 @@ bool isLetter(char32_t in, s_cfg c)
 	return c.ascii_features[in&0x7f]&A_LETTER;
 }
 
-// NRL isFront: return ((in == 'E')||(in == 'I')||(in == 'Y'));
+bool isFront(char32_t in, s_cfg c)
+{
+	in = toupper(in);
+	return ((in == 'E')||(in == 'I')||(in == 'Y'));
+}
 
 // preprocess: add a leading space, and turn all characters from lowercase into capital letters. return the length of the string.
 void preProcess(vec_char32* in, vec_char32* out, s_cfg c)
@@ -336,17 +340,19 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		// part2: match the rule prefix
 		{
 			bool fail = false;
-			bool finished = false;
 			s32 ruleoffset = -1;
 			s32 inpoffset = -1;
-			while ((!fail)&&(!finished))
+			int rulechar;
+			int inpchar;
+			while ((!fail)&&(lparen_idx+ruleoffset >= 0)&&(inpos+inpoffset >= 0))
 			{
-				int rulechar = ruleset.rule[i][lparen_idx+ruleoffset];
-				int inpchar = input->data[inpos+inpoffset];
+				rulechar = ruleset.rule[i][lparen_idx+ruleoffset];
+				inpchar = input->data[inpos+inpoffset];
+				v_printf(V_DEBUG, "rulechar is %c(%02x) at ruleoffset %d, inpchar is %c(%02x) at inpoffset %d\n", rulechar, rulechar, lparen_idx+ruleoffset, inpchar, inpchar, inpos+inpoffset);
 				if (isLetter(rulechar, c)) // letter in rule matches that letter exactly, only.
 				{
 					// it's a letter, directly compare it to the input character
-					if (rulechar == prevchar)
+					if (rulechar == inpchar)
 					{
 						// we have a match, back the offsets off each by 1
 						ruleoffset--;
@@ -410,9 +416,11 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 					else if (inpchar == 'H') // could be CH or SH!
 					{
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
+						// we can't be at offset less than 1 here, so it is always safe to decrement
 						inpoffset--;
 						inpchar = input->data[inpos+inpoffset]; // load another char...
-						if ((inpchar2 == 'C') || (inpchar2 == 'S'))
+						if ((inpchar == 'C') || (inpchar == 'S'))
 						{
 							// we have a match, back the offsets off each by 1
 							ruleoffset--;
@@ -429,6 +437,84 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						// mismatch
 						fail = true;
 					}
+				}
+				else if (rulechar == '@') // @ matches any unvoiced affricative aka nonpalate; note special cases for TH, CH, SH
+				{
+					if (isUaff(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else if (inpchar == 'H') // could be TH, CH or SH!; NOTE: the original reciter has a bug here and these tests ALWAYS fail!
+					{
+#ifdef ORIGINAL_BUGS
+						fail = true
+#else
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
+						// we can't be at offset less than 1 here, so it is always safe to decrement
+						inpoffset--;
+						inpchar = input->data[inpos+inpoffset]; // load another char...
+						if ((inpchar == 'T') || (inpchar == 'C') || (inpchar == 'S'))
+						{
+							// we have a match, back the offsets off each by 1
+							ruleoffset--;
+							inpoffset--;
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+#endif
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '^') // ^ matches any consonant
+				{
+					if (isCons(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '+') // + matches any front vowel: E, I or Y
+				{
+					if (isFront(inpchar,c))
+					{
+						// we have a match, back the offsets off each by 1
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == ':') // : matches zero or more consonants; this test can't fail, but it can consume consonants in the input
+				{
+					while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
+					{
+						inpoffset--;
+						inpchar = input->data[inpos+inpoffset];
+					}
+					ruleoffset--;
+				}
+				else
+				{
+					v_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
+					exit(1);
 				}
 			}
 			if (fail) continue; // mismatch, move on to the next rule.
