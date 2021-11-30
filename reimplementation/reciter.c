@@ -335,7 +335,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			int offset = 0; // offset within rule of exact match
 			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+offset]) )
 			{
-				fprintf(stderr, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+offset] ); fflush(stderr);
+				v_printf(V_DEBUG, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+offset] );
 				offset++;
 				n--;
 			}
