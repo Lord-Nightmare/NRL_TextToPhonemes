@@ -1,4 +1,4 @@
-// license:MIT
+// license:MIT but this isn't really ready for public release yet, so don't share it
 // copyright-holders:Jonathan Gevaryahu
 // Reimplementation of the Don't Ask Computer Software/Softvoice 'reciter'/'translator' engine
 // Preliminary version using NRL ruleset, this is very incomplete.
@@ -299,13 +299,15 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		s32 lparen_idx = -1;
 		s32 rparen_idx = -1;
 		s32 equals_idx = -1;
+		u32 rulelen = -1;
 		/* slow but safe... */
-		u32 rulelen = strlen(ruleset.rule[i]);
+		/*
+		rulelen = strlen(ruleset.rule[i]);
 		lparen_idx = strnfind(ruleset.rule[i], LPAREN, rulelen);
 		rparen_idx = strnfind(ruleset.rule[i], RPAREN, rulelen);
 		equals_idx = strnfind(ruleset.rule[i], '=', rulelen);
 		v_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, rulelen);
-
+		*/
 		/* faster but less safe... will run off the end of the rule string if a rule has no equals sign and doesn't end with a NULL '/0'
 		 (which should never happen) */
 		lparen_idx = -1;
@@ -328,19 +330,20 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		}
 		rulelen = j;
 		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, j);
-		int n = (rparen_idx - 1) - (lparen_idx + 1); // number of letters in exact match part of the rule
+		int nbase = (rparen_idx - 1) - lparen_idx; // number of letters in exact match part of the rule
+		//v_printf(V_DEBUG, "n calculated to be %d\n", n);
 		
 		// part1: compare exact match; basically a slightly customized 'strncmp()'
 		{
+			int n = nbase;
 			int offset = 0; // offset within rule of exact match
-			/*
 			while ( n && (input->data[inpos+offset]) && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+1+offset]) )
 			{
-				v_printf(V_DEBUG, "strncmp - attempted to match %c to %c\n",input->data[inpos+offset], ruleset.rule[i][lparen_idx+1+offset] );
+				v_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
 				offset++;
 				n--;
 			}
-			*/
+			/*
 			for (; n > 0; n--)
 			{
 				if (!input->data[inpos+offset])
@@ -361,7 +364,8 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 			}
-			v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
+			*/
+			//v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
 			if (n != 0) continue; // mismatch, go to next rule.
 			// if we got here, the fixed part of the rule matched.
 			v_printf(V_DEBUG, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], lparen_idx+1);
@@ -577,7 +581,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		{
 			bool fail = false;
 			s32 ruleoffset = 1;
-			s32 inpoffset = 1;
+			s32 inpoffset = nbase;
 			int rulechar;
 			int inpchar;
 			while ((!fail)&&(rparen_idx+ruleoffset < equals_idx)&&(inpos+inpoffset <= input->elements))
@@ -862,7 +866,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			{
 				vec_char32_append(output, ruleset.rule[i][equals_idx]);
 			}
-			return inpos+n;
+			return inpos+(nbase-1); // we return nbase-1 since the processing loop increments inpos first thing it does
 		}
 	}
 	// did we break out with a valid rule?
@@ -1171,7 +1175,7 @@ int main(int argc, char **argv)
 		const char* const erule_eng[] =
 		{
 			"#:[E] =/ /",
-			"' ^:[E] =/ /",
+			"'^:[E] =/ /", // was "' ^:[E] =/ /", 
 			" :[E] =/IY/",
 			"#[ED] =/D/",
 			"#:[E]D =/ /",
@@ -1344,7 +1348,7 @@ int main(int argc, char **argv)
 			"[OA]=/OW/",
 			" [ONLY]=/OW N L IY/",
 			" [ONCE]=/W AH N S/",
-			"[ON ' T]=/OW N T/",
+			"[ON'T]=/OW N T/", // was "[ON ' T]=/OW N T/",
 			"C[O]N=/AA/",
 			"[O]NG=/AO/",
 			" ^:[O]N=/AH/",
@@ -1404,7 +1408,7 @@ int main(int argc, char **argv)
 			" [SCH]=/S K/",
 			"[S]C+=/ /",
 			"#[SM]=/Z M/",
-			"#[SN] '=/Z AX N/",
+			"#[SN]'=/Z AX N/", // was "#[SN] '=/Z AX N/",
 			"[S]=/S/",
 		};
 
@@ -1506,14 +1510,14 @@ int main(int argc, char **argv)
 
 		const char* const punct_num_rule_eng[] =
 		{
-			"[ ]'=/ /",
+			//"[ ]'=/ /", // was "[ ]'=/ /",
 			"[ - ]=/ /",
 			"[ ]=/< >/",
 			"[-]=/<->/",
-			". [' S]=/Z/",
-			"#:.E [' S]=/Z/",
-			"# [' S]=/Z/",
-			"[' ]=/ /",
+			".['S]=/Z/", // was ". [' S]=/Z/",
+			"#:.E['S]=/Z/", // was "#:.E [' S]=/Z/",
+			"#['S]=/Z/", // was "# [' S]=/Z/",
+			"[']=/ /", // was "[' ]=/ /",
 			"[,]=/<,>/",
 			"[.]=/<.>/",
 			"[?]=/<?>/",
@@ -1527,6 +1531,7 @@ int main(int argc, char **argv)
 			"[7]=/S EH V AX N/",
 			"[8]=/EY T/",
 			"[9]=/N AY N/",
+			"[#]=/ /", // added to throw out invalid # chars
 		};
 		sym_ruleset ruleset[RULES_TOTAL] =
 		{
