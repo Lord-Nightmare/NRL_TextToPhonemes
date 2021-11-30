@@ -261,11 +261,65 @@ s32 strnfind(const char *src, int c, size_t n)
 #define FRONT '+'
 #define CONS0M ':'
 
+#define LPAREN '['
+#define RPAREN ']'
+
 s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, const u32 inpos, vec_char32* output, s_cfg c)
 {
 	// iterate through the rules
-	for (u32 rulenum = 0; rulenum < ruleset.
-	// match the 
+	u32 i = 0;
+	for (i = 0; i < ruleset.num_rules; i++)
+	{
+		v_printf(V_DEBUG, "found a rule %s\n", ruleset.rule[i]);
+		// part 1: check the exact match section of the rule, between the parentheses
+		// (and get the indexes to the two parentheses, which will be used in parts 2 and 3)
+		s32 leftparen = -1;
+		s32 rightparen = -1;
+		int offset = 0; // offset within rule of exact match
+		/* slow but safe... */
+		u32 rulelen = strlen(ruleset.rule[i]);
+		leftparen = strnfind(ruleset.rule[i], LPAREN, rulelen);
+		rightparen = strnfind(ruleset.rule[i], RPAREN, rulelen);
+		v_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d\n", leftparen, rightparen);
+
+		/* faster but unsafe... will run off the end of the array if no RPAREN found */
+		leftparen = -1;
+		for (rightparen = 0; ruleset.rule[i][rightparen] != RPAREN; rightparen++)
+		{
+			if (ruleset.rule[i][rightparen] == LPAREN)
+				leftparen = rightparen;
+		}
+		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d\n", leftparen, rightparen);
+		
+		// part1: compare exact match; basically a slightly customized 'strncmp()'
+		{
+			int n = (rightparen - 1) - (leftparen + 1);
+			while ( n && input->data[inpos+offset] && (input->data[inpos+offset] == ruleset.rule[i][leftparen+offset]) )
+			{
+				offset++;
+				n--;
+			}
+			v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
+			if (n != 0) continue; // mismatch, go to next rule.
+		}
+		// if we got here, the fixed part of the rule matched.
+		v_printf(V_DEBUG, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], leftparen+1);
+
+		// part2: match the rule prefix
+		/// TODO
+		
+		// part3: match the rule suffix
+		/// TODO
+		
+		// if we got this far, dump the rule right hand side past the = sign to output, then
+		// consume the number of characters between the parentheses by returning inpos + that number
+	}
+	// did we break out with a valid rule?
+	if (i == ruleset.num_rules)
+	{
+		v_printf(V_ERR, "unable to find any matching rule, exiting!\n");
+		exit(1);
+	}
 	return inpos+1; // TODO
 }
 
@@ -309,7 +363,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 						}
 						else
 						{
-							v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n")
+							v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
 							exit(1);
 							// THIS CASE IS FINISHED
 						}
@@ -352,7 +406,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 					}
 					else
 					{
-						v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n")
+						v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
 						exit(1);
 						// THIS CASE IS FINISHED
 					}
@@ -376,9 +430,9 @@ int main(int argc, char **argv)
 	s_cfg c =
 	{
 		{ // ascii_features rules set
-			\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0, // CTRL-@ thru CTRL-O
-			\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0,\0, // CTRL-P thru CTRL+_
-			\0, // SPACE
+			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-@ thru CTRL-O
+			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // CTRL-P thru CTRL+_
+			0, // SPACE
 			A_PUNCT, // !
 			A_PUNCT, // "
 			A_PUNCT, // #
@@ -386,8 +440,8 @@ int main(int argc, char **argv)
 			A_PUNCT, // %
 			A_PUNCT, // &
 			A_PUNCT|A_LETTER, // '
-			\0, // (
-			\0, // )
+			0, // (
+			0, // )
 			A_PUNCT, // *
 			A_PUNCT, // +
 			A_PUNCT, // ,
@@ -437,11 +491,11 @@ int main(int argc, char **argv)
 			A_LETTER|A_CONS|A_SIBIL, // X
 			A_LETTER|A_VOWEL, // Y
 			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // Z
-			\0, // [
-			\0, // '\'
-			\0, // ]
+			0, // [
+			0, // '\'
+			0, // ]
 			A_PUNCT, // ^
-			\0, // _
+			0, // _
 			/// Technically, we can do a check for 0x60-0x7f and mirror it to 0x40-0x5f,
 			// but to make it so we can just do a simple validation of "is a valid ascii character <= 0x7f"
 			// and protect from out of bounds accesses using &0x7f; we repeat the 0x60-0x7f part here
@@ -472,11 +526,11 @@ int main(int argc, char **argv)
 			A_LETTER|A_CONS|A_SIBIL, // x
 			A_LETTER|A_VOWEL, // y
 			A_LETTER|A_CONS|A_SIBIL|A_VOICED|A_UAFF, // z
-			\0, // {
-			\0, // |
-			\0, // }
+			0, // {
+			0, // |
+			0, // }
 			A_PUNCT, // ~
-			\0 // DEL
+			0 // DEL
 		},
 		//NULL, // letter to sound rules
 		1, // verbose (was 0)
