@@ -277,7 +277,7 @@ s32 strnfind(const char *src, int c, size_t n)
 #define VOWEL1M '#'
 #define CONS1M '*'
 #define VOICED '.'
-#define CONS1IE '$'
+#define CONS1EI '$'
 #define SUFFIX '%'
 #define SIBIL '&'
 #define NONPAL '@'
@@ -546,7 +546,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 					ruleoffset--;
 				}
-				// The NRL parser technically allows a rule character of '*' which is 'one or more consonants'
+				// The NRL parser allows a rule character of '*' which is 'one or more consonants'
 				// but none of the rules in the set in the published papers actually use this symbol.
 				// Perhaps the lost older rule sets did. We can support it anyway.
 #ifdef SUPPORT_CONS1M
@@ -561,6 +561,37 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 							inpchar = input->data[inpos+inpoffset];
 						}
 						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+#endif
+				// The NRL parser allows a rule character of '$' which is 'a consonant followed by E or I'
+				// but none of the rules in the set in the published papers actually use this symbol.
+				// Perhaps the lost older rule sets did. We can support it anyway.
+#ifdef SUPPORT_CONS1EI
+				else if (rulechar == '$') // $ matches one consonant followed by 'I' or 'E'
+				{
+					if ( (inpchar == 'E') || (inpchar == 'I') ) // '^E' and '^I' cases
+					{
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
+						// we can't be at offset less than 1 here, so it is always safe to decrement
+						inpoffset--;
+						inpchar = input->data[inpos+inpoffset]; // load another char...
+						if (isCons(inpchar,c))
+						{
+							// match
+							ruleoffset--;
+							inpoffset -= 2;
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
 					}
 					else
 					{
@@ -853,12 +884,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				// The NRL parser allows a rule character of '$' which is 'a consonant followed by E or I'
 				// but none of the rules in the set in the published papers actually use this symbol.
 				// Perhaps the lost older rule sets did. We can support it anyway.
-#ifdef SUPPORT_CONS1IE
-				else if (rulechar == '$') // $ matches one consonant followed by 'I' or 'E'
+#ifdef SUPPORT_CONS1EI
+				else if (rulechar == '$') // $ matches one consonant followed by 'E' or 'I'
 				{
 					if ( isCons(inpchar,c) && (inpos+inpoffset <= (input->elements-1))
-						&& ( (input->data[inpos+inpoffset+1] == 'I') // '^I' case
-							|| (input->data[inpos+inpoffset+1] == 'E') // '^E' case
+						&& ( (input->data[inpos+inpoffset+1] == 'E') // '^E' case
+							|| (input->data[inpos+inpoffset+1] == 'I') // '^I' case
 						)
 					)
 					{
