@@ -300,7 +300,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		s32 lparen_idx = -1;
 		s32 rparen_idx = -1;
 		s32 equals_idx = -1;
-		u32 rulelen = -1;
+		//u32 rulelen = -1;
 		/* slow but safe... */
 		/*
 		rulelen = strlen(ruleset.rule[i]);
@@ -311,9 +311,9 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		*/
 		/* faster but less safe... will run off the end of the rule string if a rule has no equals sign and doesn't end with a NULL '/0'
 		 (which should never happen) */
-		lparen_idx = -1;
-		rparen_idx = -1;
-		equals_idx = -1;
+		//lparen_idx = -1;
+		//rparen_idx = -1;
+		//equals_idx = -1;
 		/*for (rparen_idx = 0; ruleset.rule[i][rparen_idx] != RPAREN; rparen_idx++)
 		{
 			if (ruleset.rule[i][rparen_idx] == LPAREN)
@@ -329,7 +329,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			if (ruleset.rule[i][j] == '=')
 				equals_idx = j;
 		}
-		rulelen = j;
+		//rulelen = j;
 		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, j);
 		int nbase = (rparen_idx - 1) - lparen_idx; // number of letters in exact match part of the rule
 		//v_printf(V_DEBUG, "n calculated to be %d\n", n);
@@ -413,7 +413,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '#') // # matches any vowel
+				else if (rulechar == '#') // # matches any vowel (reciter) or any number of vowels >= 1 (NRL)
 				{
 					if (isVowel(inpchar,c))
 					{
@@ -549,7 +549,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				// The NRL parser technically allows a rule character of '*' which is 'one or more consonants'
 				// but none of the rules in the set in the published papers actually use this symbol.
 				// Perhaps the lost older rule sets did. We can support it anyway.
-#ifdef SUPPORT_LOST_CONS1M
+#ifdef SUPPORT_CONS1M
 				else if (rulechar == '*') // * matches one or more consonants
 				{
 					if (isCons(inpchar,c))
@@ -827,10 +827,10 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				// The NRL parser technically allows a rule character of '*' which is 'one or more consonants'
+				// The NRL parser allows a rule character of '*' which is 'one or more consonants'
 				// but none of the rules in the set in the published papers actually use this symbol.
 				// Perhaps the lost older rule sets did. We can support it anyway.
-#ifdef SUPPORT_LOST_CONS1M
+#ifdef SUPPORT_CONS1M
 				else if (rulechar == '*') // * matches one or more consonants
 				{
 					if (isCons(inpchar,c))
@@ -842,6 +842,29 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 							inpoffset++;
 							inpchar = input->data[inpos+inpoffset];
 						}
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+#endif
+				// The NRL parser allows a rule character of '$' which is 'a consonant followed by E or I'
+				// but none of the rules in the set in the published papers actually use this symbol.
+				// Perhaps the lost older rule sets did. We can support it anyway.
+#ifdef SUPPORT_CONS1IE
+				else if (rulechar == '$') // $ matches one consonant followed by 'I' or 'E'
+				{
+					if ( isCons(inpchar,c) && (inpos+inpoffset <= (input->elements-1))
+						&& ( (input->data[inpos+inpoffset+1] == 'I') // '^I' case
+							|| (input->data[inpos+inpoffset+1] == 'E') // '^E' case
+						)
+					)
+					{
+						// match
+						ruleoffset++;
+						inpoffset += 2;
 					}
 					else
 					{
