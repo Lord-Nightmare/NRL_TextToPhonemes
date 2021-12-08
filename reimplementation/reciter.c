@@ -593,12 +593,28 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				}
 				else if (rulechar == ':') // : matches zero or more consonants; this test can't fail, but it can consume consonants in the input
 				{
-					ruleoffset--;
-					while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
+					// one problem is the NRL rules often have '^' before ':' in the prefix (meaning 'one or more consonant'),
+					// and if we parse the ':' first we end up consuming all the consonants, leaving none for the '^'.
+					// we need to explicitly check for that here and leave a single consonant in the input if that's the case.
+					// this does NOT cover the circumstance with '^^:'. no NRL rules contain that chain, and you should be using ':^' or ':^^' anyway!
+					bool singleBeforeMulti = false;
+					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '^') ) // '^:' case
 					{
+						singleBeforeMulti = true;
+					}
+					bool matchedCons = false;
+					ruleoffset--;
+					while ((inpos+(inpoffset-1) >= 0) && isCons(inpchar,c))
+					{
+						matchedCons = true;
 						// match
 						inpoffset--;
 						inpchar = input->data[inpos+inpoffset];
+					}
+					if (singleBeforeMulti && matchedCons)
+					{
+						// in this very specific case, we're courteous and leave one extra character on the input, so the ^ has something to eat
+						inpoffset++;
 					}
 				}
 				// The NRL parser allows a rule character of '*' which is 'one or more consonants'
@@ -612,7 +628,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						// match one...
 						ruleoffset--;
 						// yes, we recheck what we already just checked. this avoids a bad bug.
-						while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
+						while ((inpos+(inpoffset-1) >= 0) && isCons(inpchar,c))
 						{
 							// match another...
 							inpoffset--;
@@ -936,14 +952,16 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 								inpoffset++;
 							}
 							else if ( (inpchar == 'L') && (inpos+inpoffset+1 <= input->elements)
-								&& (input->data[inpos+inpoffset+1] == 'Y') ) // 'ELY' case
+								&& (input->data[inpos+inpoffset+1] == 'Y')
+								) // 'ELY' case
 							{
 								// match 2 characters
 								inpoffset += 2;
 							}
-							else if ( (inpchar == 'F') && (inpos+inpoffset <= (input->elements-2))
+							else if ( (inpchar == 'F') && (inpos+inpoffset+2 <= input->elements)
 								&& (input->data[inpos+inpoffset+1] == 'U')
-								&& (input->data[inpos+inpoffset+2] == 'L') ) // 'EFUL' case
+								&& (input->data[inpos+inpoffset+2] == 'L')
+								) // 'EFUL' case
 							{
 								// match 3 characters
 								inpoffset += 3;
@@ -951,7 +969,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						}
 						// we either matched or fell through due to lack of input, which is ok although may not match original behavior
 					}
-					else if ( (inpchar == 'I') && (inpos+inpoffset <= (input->elements-2))
+					else if ( (inpchar == 'I') && (inpos+inpoffset+2 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'N')
 						&& (input->data[inpos+inpoffset+2] == 'G') ) // 'ING' case
 					{
