@@ -333,7 +333,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, j);
 		int nbase = (rparen_idx - 1) - lparen_idx; // number of letters in exact match part of the rule
 		//v_printf(V_DEBUG, "n calculated to be %d\n", n);
-		
+
 		// part1: compare exact match; basically a slightly customized 'strncmp()'
 		{
 			int n = nbase;
@@ -389,7 +389,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// it's a letter, directly compare it to the input character
 					if (rulechar == inpchar)
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -403,7 +403,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (!isLetter(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -413,11 +413,61 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '#') // # matches any vowel (reciter) or any number of vowels >= 1 (NRL)
+				// The NRL rules have '#' match 'one or more vowels', while the SV rules have '#' match 'exactly one vowel'
+				// NRL rules also allow '##' to match 'two or more vowels' which requires look-ahead or a recursive parser
+				// which does a DFS or BFS of every potentially matching character. We cheat and look ahead here.
+#ifdef NRL_VOWEL
+				else if (rulechar == '#') // # matches one or more vowels
+				{
+					// special check here for the case where the rule has '##' in it
+					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '#') ) // '##' case
+					{
+						// check for two vowels, plus any more.
+						if (isVowel(inpchar,c) && (inpos+(inpoffset-1) >= 0) && isVowel(input->data[inpos+(inpoffset-1)],c))
+						{
+							// match 2 vowels...
+							ruleoffset -= 2;
+							// yes, we recheck what we already just checked. this avoids a bad bug.
+							while ((inpos+(inpoffset-1) >= 0) && isVowel(inpchar,c))
+							{
+								// match another...
+								inpoffset--;
+								inpchar = input->data[inpos+inpoffset];
+							}
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+					}
+					else // '#' case
+					{
+						if (isVowel(inpchar,c))
+						{
+							// match one...
+							ruleoffset--;
+							// yes, we recheck what we already just checked. this avoids a bad bug.
+							while ((inpos+(inpoffset-1) >= 0) && isVowel(inpchar,c))
+							{
+								// match another...
+								inpoffset--;
+								inpchar = input->data[inpos+inpoffset];
+							}
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+					}
+				}
+#else
+				else if (rulechar == '#') // # matches any vowel
 				{
 					if (isVowel(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -427,11 +477,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
+#endif
 				else if (rulechar == '.') // . matches any voiced consonant
 				{
 					if (isVoiced(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -445,21 +496,20 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isSibil(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
 					else if (inpchar == 'H') // could be CH or SH!
 					{
-						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
-						// we can't be at offset less than 1 here, so it is always safe to decrement
-						inpoffset--;
-						inpchar = input->data[inpos+inpoffset]; // load another char...
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
+						// we can't be at offset less than 1 here, so it is always safe to index back one more character
+						inpchar = input->data[inpos+(inpoffset-1)]; // load another char...
 						if ((inpchar == 'C') || (inpchar == 'S'))
 						{
-							// we have a match, back the offsets off each by 1
+							// match 2 characters
 							ruleoffset--;
-							inpoffset--;
+							inpoffset -= 2;
 						}
 						else
 						{
@@ -477,7 +527,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isUaff(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -486,15 +536,14 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #ifdef ORIGINAL_BUGS
 						fail = true;
 #else
-						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
-						// we can't be at offset less than 1 here, so it is always safe to decrement
-						inpoffset--;
-						inpchar = input->data[inpos+inpoffset]; // load another char...
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
+						// we can't be at offset less than 1 here, so it is always safe to index back one more character
+						inpchar = input->data[inpos+(inpoffset-1)]; // load another char...
 						if ((inpchar == 'T') || (inpchar == 'C') || (inpchar == 'S'))
 						{
-							// we have a match, back the offsets off each by 1
+							// match 2 characters
 							ruleoffset--;
-							inpoffset--;
+							inpoffset -= 2;
 						}
 						else
 						{
@@ -513,7 +562,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -527,7 +576,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isFront(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset--;
 						inpoffset--;
 					}
@@ -539,12 +588,13 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				}
 				else if (rulechar == ':') // : matches zero or more consonants; this test can't fail, but it can consume consonants in the input
 				{
+					ruleoffset--;
 					while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
 					{
+						// match
 						inpoffset--;
 						inpchar = input->data[inpos+inpoffset];
 					}
-					ruleoffset--;
 				}
 				// The NRL parser allows a rule character of '*' which is 'one or more consonants'
 				// but none of the rules in the set in the published papers actually use this symbol.
@@ -554,13 +604,15 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
+						// match one...
 						ruleoffset--;
+						// yes, we recheck what we already just checked. this avoids a bad bug.
 						while ((inpos+inpoffset >= 0) && isCons(inpchar,c))
 						{
+							// match another...
 							inpoffset--;
 							inpchar = input->data[inpos+inpoffset];
 						}
-						inpoffset--;
 					}
 					else
 					{
@@ -577,13 +629,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if ( (inpchar == 'E') || (inpchar == 'I') ) // '^E' and '^I' cases
 					{
-						// the beginning of the input array is ALWAYS a space, so since we saw an 'H' 
-						// we can't be at offset less than 1 here, so it is always safe to decrement
-						inpoffset--;
-						inpchar = input->data[inpos+inpoffset]; // load another char...
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
+						// we can't be at offset less than 1 here, so it is always safe to index back one more character
+						inpchar = input->data[inpos+(inpoffset-1)]; // load another char...
 						if (isCons(inpchar,c))
 						{
-							// match
+							// match 2 characters
 							ruleoffset--;
 							inpoffset -= 2;
 						}
@@ -608,7 +659,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			}
 			if (fail) continue; // mismatch, move on to the next rule.
 		}
-		
+
 		// part3: match the rule suffix
 		{
 			bool fail = false;
@@ -626,7 +677,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// it's a letter, directly compare it to the input character
 					if (rulechar == inpchar)
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -640,7 +691,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (!isLetter(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -651,7 +702,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 				// The NRL rules have '#' match 'one or more vowels', while the SV rules have '#' match 'exactly one vowel'
-				// NRL rules also allow '##' to match 'two or more vowels' which requires lookahead or a recursive parser
+				// NRL rules also allow '##' to match 'two or more vowels' which requires look-ahead or a recursive parser
 				// which does a DFS or BFS of every potentially matching character. We cheat and look ahead here.
 #ifdef NRL_VOWEL
 				else if (rulechar == '#') // # matches one or more vowels
@@ -660,12 +711,14 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					if ( (rparen_idx+ruleoffset+1 < equals_idx) && (ruleset.rule[i][rparen_idx+ruleoffset+1] == '#') ) // '##' case
 					{
 						// check for two vowels, plus any more.
-						if (isVowel(inpchar,c) && (inpos+inpoffset <= (input->elements-1)) && isVowel(input->data[inpos+inpoffset+1],c))
+						if (isVowel(inpchar,c) && (inpos+inpoffset+1 <= input->elements) && isVowel(input->data[inpos+inpoffset+1],c))
 						{
+							// match 2 vowels...
 							ruleoffset += 2;
-							inpoffset += 2;
-							while ((inpos+inpoffset <= (input->elements-1)) && isVowel(inpchar,c))
+							// yes, we recheck what we already just checked. this avoids a bad bug.
+							while ((inpos+inpoffset+1 <= input->elements) && isVowel(inpchar,c))
 							{
+								// match another...
 								inpoffset++;
 								inpchar = input->data[inpos+inpoffset];
 							}
@@ -680,10 +733,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					{
 						if (isVowel(inpchar,c))
 						{
+							// match one...
 							ruleoffset++;
-							inpoffset++;
-							while ((inpos+inpoffset <= (input->elements-1)) && isVowel(inpchar,c))
+							// yes, we recheck what we already just checked. this avoids a bad bug.
+							while ((inpos+inpoffset+1 <= input->elements) && isVowel(inpchar,c))
 							{
+								// match another...
 								inpoffset++;
 								inpchar = input->data[inpos+inpoffset];
 							}
@@ -700,7 +755,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isVowel(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -715,7 +770,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isVoiced(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -731,42 +786,42 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #ifdef ORIGINAL_BUGS
 					if (isSibil(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
-					else if ( (inpchar == 'H') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'H') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'C') ) // bugged 'HC' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
-					else if ( (inpchar == 'H') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'H') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'S') ) // bugged 'HS' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
 #else
-					if ( (inpchar == 'C') && (inpos+inpoffset <= (input->elements-1))
+					if ( (inpchar == 'C') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'CH' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
-					else if ( (inpchar == 'S') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'S') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'SH' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
 					else if (isSibil(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -781,7 +836,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isUaff(inpchar,c))
 					{
-						// we have a match, back the offsets off each by 1
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -795,24 +850,24 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						// 'H' against the constants 'T', 'C', and 'S'.
 					}
 #else
-					else if ( (inpchar == 'T') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'T') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'TH' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
-					else if ( (inpchar == 'C') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'C') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'CH' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
-					else if ( (inpchar == 'S') && (inpos+inpoffset <= (input->elements-1))
+					else if ( (inpchar == 'S') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'SH' case
 					{
-						// match
+						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
 					}
@@ -827,7 +882,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -841,7 +896,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isFront(inpchar,c))
 					{
-						// we have a match
+						// match
 						ruleoffset++;
 						inpoffset++;
 					}
@@ -853,20 +908,20 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				}
 				else if (rulechar == ':') // : matches zero or more consonants; this test can't fail, but it can consume consonants in the input
 				{
-					while ((inpos+inpoffset <= (input->elements-1)) && isCons(inpchar,c))
+					ruleoffset++;
+					while ((inpos+inpoffset+1 <= input->elements) && isCons(inpchar,c))
 					{
 						inpoffset++;
 						inpchar = input->data[inpos+inpoffset];
 					}
-					ruleoffset++;
 				}
 				else if (rulechar == '%') // % matches 'E', 'ER', 'ES', 'ED', 'ELY', 'EFUL', and 'ING'
 				{
 					if (inpchar == 'E') // 'E', 'ER', 'ES', 'ED', 'ELY', 'EFUL'; if this check for 'E' passes, this test can't fail outright unless we run out of input
 					{
-						// we have a match
+						// match
 						ruleoffset++;
-						if (inpos+inpoffset <= (input->elements-1))
+						if (inpos+inpoffset+1 <= input->elements)
 						{
 							inpoffset++;
 							inpchar = input->data[inpos+inpoffset]; // load another char...
@@ -875,17 +930,17 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 								// match
 								inpoffset++;
 							}
-							else if ( (inpchar == 'L') && (inpos+inpoffset <= (input->elements-1))
+							else if ( (inpchar == 'L') && (inpos+inpoffset+1 <= input->elements)
 								&& (input->data[inpos+inpoffset+1] == 'Y') ) // 'ELY' case
 							{
-								// match
+								// match 2 characters
 								inpoffset += 2;
 							}
 							else if ( (inpchar == 'F') && (inpos+inpoffset <= (input->elements-2))
 								&& (input->data[inpos+inpoffset+1] == 'U')
 								&& (input->data[inpos+inpoffset+2] == 'L') ) // 'EFUL' case
 							{
-								// match
+								// match 3 characters
 								inpoffset += 3;
 							}
 						}
@@ -895,7 +950,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						&& (input->data[inpos+inpoffset+1] == 'N')
 						&& (input->data[inpos+inpoffset+2] == 'G') ) // 'ING' case
 					{
-						// match
+						// match 3 characters
 						ruleoffset++;
 						inpoffset += 3;
 					}
@@ -913,10 +968,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if (isCons(inpchar,c))
 					{
+						// match one...
 						ruleoffset++;
-						inpoffset++;
-						while ((inpos+inpoffset <= (input->elements-1)) && isCons(inpchar,c))
+						// yes, we recheck what we already just checked. this avoids a bad bug.
+						while ((inpos+inpoffset+1 <= input->elements) && isCons(inpchar,c)) // TODO: there is a probable bug here with a string like " BANG" were NG are consonants but this while loops fails leaving the G unconsumed.
 						{
+							// match another...
 							inpoffset++;
 							inpchar = input->data[inpos+inpoffset];
 						}
@@ -934,7 +991,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #ifdef SUPPORT_CONS1EI
 				else if (rulechar == '$') // $ matches one consonant followed by 'E' or 'I'
 				{
-					if ( isCons(inpchar,c) && (inpos+inpoffset <= (input->elements-1))
+					if ( isCons(inpchar,c) && (inpos+inpoffset+1 <= input->elements)
 						&& ( (input->data[inpos+inpoffset+1] == 'E') // '^E' case
 							|| (input->data[inpos+inpoffset+1] == 'I') // '^I' case
 						)
@@ -1277,7 +1334,7 @@ int main(int argc, char **argv)
 		const char* const erule_eng[] =
 		{
 			"#:[E] =/ /",
-			"'^:[E] =/ /", // was "' ^:[E] =/ /", 
+			"'^:[E] =/ /", // was "' ^:[E] =/ /",
 			" :[E] =/IY/",
 			"#[ED] =/D/",
 			"#:[E]D =/ /",
