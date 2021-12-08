@@ -26,6 +26,11 @@ typedef uint64_t u64;
 #define RULES_PUNCT_DIGIT 26
 #define RECITER_END_CHAR 0x1b
 
+#define SUPPORT_CONS1M 1
+#define SUPPORT_CONS1EI 1
+#define NRL_VOWEL 1
+#undef ORIGINAL_BUGS
+
 // verbose macros
 #define v_printf(v, ...) \
 	do { if (v) { fprintf(stderr, __VA_ARGS__); fflush(stderr); } } while (0)
@@ -1564,7 +1569,6 @@ int main(int argc, char **argv)
 			"#^:#[S] =/S/",
 			"U[S] =/S/",
 			" :#[S] =/Z/",
-			":#E[S] =/Z/", // this is a new rule added to handle the degenerate case with SHOES PIES PARRIES MARRIES etc where reciter considers # to be one vowel but the NRL rules consider it 'one or more' and require a recursive parser to parse sanely (triggering the rule above this one)
 			" [SCH]=/S K/",
 			"[S]C+=/ /",
 			"#[SM]=/Z M/",
