@@ -40,11 +40,12 @@ typedef uint64_t u64;
 // verbosity defines; V_DEBUG can be changed here to enable/disable debug messages
 #define V_DEBUG (1)
 #define V_ERR (1)
-#define V_PARAM (c.verbose & (1<<0))
-#define V_MAINLOOP (c.verbose & (1<<1))
-#define V_SEARCH (c.verbose & (1<<2))
-#define V_SEARCH2 (c.verbose & (1<<3))
-#define V_RULES (c.verbose & (1<<4))
+#define V_PARAM    (c.verbose & (1<<0))
+#define V_PARSE    (c.verbose & (1<<1))
+#define V_MAINLOOP (c.verbose & (1<<2))
+#define V_SEARCH   (c.verbose & (1<<3))
+#define V_SEARCH2  (c.verbose & (1<<4))
+#define V_RULES    (c.verbose & (1<<5))
 
 // 'vector' structs for holding data
 /*
@@ -1281,7 +1282,7 @@ int main(int argc, char **argv)
 			0 // DEL
 		},
 		//NULL, // letter to sound rules
-		1, // verbose (was 0)
+		32, // verbose (was 0)
 	};
 
 	//{
@@ -1792,7 +1793,7 @@ int main(int argc, char **argv)
 	FILE *in = fopen(argv[1], "rb");
 	if (!in)
 	{
-		fprintf(stderr,"E* Unable to open input file %s!\n", argv[1]); fflush(stderr);
+		v_printf(V_ERR,"E* Unable to open input file %s!\n", argv[1]);
 		return 1;
 	}
 
@@ -1803,7 +1804,7 @@ int main(int argc, char **argv)
 	uint8_t *dataArray = (uint8_t *) malloc((len) * sizeof(uint8_t));
 	if (dataArray == NULL)
 	{
-		fprintf(stderr,"E* Failure to allocate memory for array of size %d, aborting!\n", len); fflush(stderr);
+		v_printf(V_ERR,"E* Failure to allocate memory for array of size %d, aborting!\n", len);
 		fclose(in);
 		return 1;
 	}
@@ -1813,12 +1814,12 @@ int main(int argc, char **argv)
 		fclose(in);
 		if (temp != len)
 		{
-			fprintf(stderr,"E* Error reading in %d elements, only read in %d, aborting!\n", len, temp); fflush(stderr);
+			v_printf(V_ERR,"E* Error reading in %d elements, only read in %d, aborting!\n", len, temp);
 			free(dataArray);
 			dataArray = NULL;
 			return 1;
 		}
-		fprintf(stderr,"D* Successfully read in %d bytes\n", temp); fflush(stderr);
+		v_printf(V_PARSE,"D* Successfully read in %d bytes\n", temp);
 	}
 
 /*
@@ -1826,7 +1827,7 @@ int main(int argc, char **argv)
 	FILE *out = fopen(argv[2], "wb");
 	if (!out)
 	{
-		fprintf(stderr,"E* Unable to open output file %s!\n", argv[2]);
+		v_printf(V_ERR,"E* Unable to open output file %s!\n", argv[2]);
 		free(dataArray);
 		dataArray = NULL;
 		return 1;
