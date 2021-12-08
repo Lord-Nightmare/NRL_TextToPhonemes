@@ -117,12 +117,12 @@ void vec_char32_append(vec_char32* l, char32_t a)
 
 void vec_char32_dbg_stats(vec_char32* l)
 {
-	v_printf(V_DEBUG,"DEBUG: vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
+	v_printf(V_DEBUG,"vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
 }
 
 void vec_char32_dbg_print(vec_char32* l)
 {
-	v_printf(V_DEBUG,"DEBUG: vec_char32 contents: '");
+	v_printf(V_DEBUG,"vec_char32 contents: '");
 	for (u32 i=0; i < l->elements; i++)
 	{
 		v_printf(V_DEBUG,"%c", (char)l->data[i]);
@@ -1844,9 +1844,9 @@ int main(int argc, char **argv)
 	{
 		vec_char32_append(d_raw,dataArray[i]);
 	}
-	v_printf(V_DEBUG,"Input phrase stats are:\n");
-	vec_char32_dbg_stats(d_raw);
-	vec_char32_dbg_print(d_raw);
+	//v_printf(V_DEBUG,"Input phrase stats are:\n");
+	//vec_char32_dbg_stats(d_raw);
+	//vec_char32_dbg_print(d_raw);
 
 	// free the input array
 	free(dataArray);
@@ -1858,8 +1858,8 @@ int main(int argc, char **argv)
 	preProcess(d_raw, d_in, c);
 	vec_char32_free(d_raw);
 
-	v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
-	vec_char32_dbg_stats(d_in);
+	//v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
+	//vec_char32_dbg_stats(d_in);
 	vec_char32_dbg_print(d_in);
 
 	// do stuff with preprocessed phrase here, i.e. the rest of the owl
@@ -1867,8 +1867,8 @@ int main(int argc, char **argv)
 	vec_char32* d_out = vec_char32_alloc(4);
 	processPhrase(ruleset, d_in, d_out, c);
 	vec_char32_free(d_in);
-	v_printf(V_DEBUG,"Processing done, stats are now:\n");
-	vec_char32_dbg_stats(d_out);
+	//v_printf(V_DEBUG,"Processing done, stats are now:\n");
+	//vec_char32_dbg_stats(d_out);
 	vec_char32_dbg_print(d_out);
 
 	vec_char32_free(d_out);
