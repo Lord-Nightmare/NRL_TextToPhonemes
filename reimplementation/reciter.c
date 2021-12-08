@@ -650,7 +650,53 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '#') // # matches any vowel
+				// The NRL rules have '#' match 'one or more vowels', while the SV rules have '#' match 'exactly one vowel'
+				// NRL rules also allow '##' to match 'two or more vowels' which requires lookahead or a recursive parser
+				// which does a DFS or BFS of every potentially matching character. We cheat and look ahead here.
+#ifdef NRL_VOWEL
+				else if (rulechar == '#') // # matches one or more vowels
+				{
+					// special check here for the case where the rule has '##' in it
+					if ( (rparen_idx+ruleoffset+1 < equals_idx) && (ruleset.rule[i][rparen_idx+ruleoffset+1] == '#') ) // '##' case
+					{
+						// check for two vowels, plus any more.
+						if (isVowel(inpchar,c) && (inpos+inpoffset <= (input->elements-1)) && isVowel(input->data[inpos+inpoffset+1],c))
+						{
+							ruleoffset += 2;
+							inpoffset += 2;
+							while ((inpos+inpoffset <= (input->elements-1)) && isVowel(inpchar,c))
+							{
+								inpoffset++;
+								inpchar = input->data[inpos+inpoffset];
+							}
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+					}
+					else // '#' case
+					{
+						if (isVowel(inpchar,c))
+						{
+							ruleoffset++;
+							inpoffset++;
+							while ((inpos+inpoffset <= (input->elements-1)) && isVowel(inpchar,c))
+							{
+								inpoffset++;
+								inpchar = input->data[inpos+inpoffset];
+							}
+						}
+						else
+						{
+							// mismatch
+							fail = true;
+						}
+					}
+				}
+#else
+				else if (rulechar == '#') // # matches one vowel
 				{
 					if (isVowel(inpchar,c))
 					{
@@ -664,6 +710,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
+#endif
 				else if (rulechar == '.') // . matches any voiced consonant
 				{
 					if (isVoiced(inpchar,c))
