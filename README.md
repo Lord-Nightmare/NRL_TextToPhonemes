@@ -10,6 +10,8 @@ This repository contains a typed version of the original TRANS program (intended
 In the future, other implementations and derivatives of the NRL algorithm may appear in this repository.
 
 The NRL algorithm or extended derivatives of it was used in many products and places, including but not limited to:
+* Upper Case publishing's ANGLOPHONE package for the CompuTalker CT-1 speech synthesizer
+* Street Electronics Inc's Echo synthesizer for the Apple II
 * Don't Ask Software/SoftVoice's Software Automatic Mouth ("SAM") (as the 'RECITER' program) and later derivatives (MacInTalk, Narrator and SVTTS)
 * General Instrument/Microchip's CTS256A text pre-processor accessory chip for the SP0256-AL2 speech synthesizer chip
 * Steve Ciarcia's Microvox, AKA Intex Talker
