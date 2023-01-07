@@ -656,7 +656,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				{
 					if ( (inpchar == 'E') || (inpchar == 'I') ) // '^E' and '^I' cases
 					{
-						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
+						// the beginning of the input array is ALWAYS a space, so since we saw an 'E' or 'I'
 						// we can't be at offset less than 1 here, so it is always safe to index back one more character
 						inpchar = input->data[inpos+(inpoffset-1)]; // load another char...
 						if (isCons(inpchar,c))
@@ -1083,7 +1083,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 		if (input->data[inpos] == '.') // is this character a period?
 		{
 			v_printf(V_MAINLOOP, "character is a period...\n");
-			if (isDigit(input->data[++inpos], c)) // is the character after the period a digit?
+			if (isDigit(input->data[++inpos], c)) // is the character after the period a digit? // TODO: verify there isn't a bug here with consuming an extra input item 
 			{
 				v_printf(V_MAINLOOP, " followed by a digit...\n");
 				u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
