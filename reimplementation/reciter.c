@@ -46,6 +46,7 @@ typedef uint64_t u64;
 #define V_SEARCH   (c.verbose & (1<<3))
 #define V_SEARCH2  (c.verbose & (1<<4))
 #define V_RULES    (c.verbose & (1<<5))
+#define V_ERULES   (c.verbose & (1<<6))
 
 // 'vector' structs for holding data
 /*
@@ -431,7 +432,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// special check here for the case where the rule has '##' in it
 					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '#') ) // '##' case
 					{
-						//v_printf(V_DEBUG, "found a prefix rule with the problematic ## case\n");
+						v_printf(V_ERULES, "found a prefix rule with the problematic ## case\n");
 						// check for two vowels, plus any more.
 						if (isVowel(inpchar,c) && (inpos+(inpoffset-1) >= 0) && isVowel(input->data[inpos+(inpoffset-1)],c))
 						{
@@ -605,7 +606,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					bool singleBeforeMulti = false;
 					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '^') ) // '^:' case
 					{
-						//v_printf(V_DEBUG, "found a prefix rule with the problematic ^: case\n");
+						v_printf(V_ERULES, "found a prefix rule with the problematic ^: case\n");
 						singleBeforeMulti = true;
 					}
 					bool matchedCons = false;
@@ -737,7 +738,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// special check here for the case where the rule has '##' in it
 					if ( (rparen_idx+ruleoffset+1 < equals_idx) && (ruleset.rule[i][rparen_idx+ruleoffset+1] == '#') ) // '##' case
 					{
-						//v_printf(V_DEBUG, "found a suffix rule with the problematic ## case\n");
+						v_printf(V_ERULES, "found a suffix rule with the problematic ## case\n");
 						// check for two vowels, plus any more.
 						if (isVowel(inpchar,c) && (inpos+inpoffset+1 <= input->elements) && isVowel(input->data[inpos+inpoffset+1],c))
 						{
@@ -874,8 +875,8 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					{
 						fail = true;
 						// technically the original code tries to check for 'HT' 'HC' 'HS' like the bugged '&' rule case above,
-						// but it forgets to increment the inpoffset pointer so it always fails since it checks the constant
-						// 'H' against the constants 'T', 'C', and 'S'.
+						// but it forgets to increment the inpoffset pointer so it always fails since it checks the input
+						// 'H' against the constants 'T', 'C', and 'S' without advancing to the next input character.
 					}
 #else
 					else if ( (inpchar == 'T') && (inpos+inpoffset+1 <= input->elements)
