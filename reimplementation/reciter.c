@@ -49,13 +49,6 @@ typedef uint64_t u64;
 #define V_ERULES   (c.verbose & (1<<6))
 
 // 'vector' structs for holding data
-/*
-typedef struct vec_u8
-{
-	u32 elements; // number of elements in the vector, defaults to zero/empty
-	u32 capacity; // amount of element-sized memory blocks currently allocated for the vector; i.e. capacity
-	u8* data;
-} vec_u8;*/
 
 typedef struct vec_char32
 {
@@ -79,9 +72,6 @@ vec_char32* vec_char32_alloc(u32 init_len)
 
 void vec_char32_free(vec_char32* l)
 {
-	//free the structs that the data pointer points to, sequentially. (not necessary with this structure)
-	//for (int i = 0; i < l->capacity; i++)
-	//free(l->data[i]);
 	// free the data pointer itself
 	free(l->data);
 	l->data = NULL;
@@ -140,14 +130,6 @@ typedef struct sym_ruleset
 	const char* const * rule;
 } sym_ruleset;
 
-// 'vector' struct for holding a list of strings
-/*typedef struct vec_strs
-{
-	u32 elements; // number of elements in the vector, defaults to zero/empty
-	u32 capacity; // amount of element-sized memory blocks currently allocated for the vector; i.e. capacity
-	vec_u8* data;
-} vec_strs;*/
-
 // Digits, 0-9
 #define A_DIGIT 0x01
 // Punctuation characters that do not end a word "!\"#$%\'*+,-./0123456789:;<=>?@^"
@@ -190,7 +172,6 @@ bool isPunct(char32_t in, s_cfg c)
 }
 
 //NRL isPunctNoSpace: return (isPunct(in)&& (in != ' '))
-
 
 bool isUaff(char32_t in, s_cfg c)
 {
@@ -1823,19 +1804,6 @@ int main(int argc, char **argv)
 		v_printf(V_PARSE,"D* Successfully read in %d bytes\n", temp);
 	}
 
-/*
-// prepare output file
-	FILE *out = fopen(argv[2], "wb");
-	if (!out)
-	{
-		v_printf(V_ERR,"E* Unable to open output file %s!\n", argv[2]);
-		free(dataArray);
-		dataArray = NULL;
-		return 1;
-	}
-	fflush(stderr);
-*/
-
 	// actual program goes here
 
 	// allocate a vector
@@ -1874,21 +1842,6 @@ int main(int argc, char **argv)
 	vec_char32_dbg_print(d_out);
 
 	vec_char32_free(d_out);
-
-	//fprintf(stdout,"trying to print size of arule array, should be 33\n");
-	//fprintf(stdout,"sizeof(arule_eng): %d\n", sizeof(arule_eng));
-	//fprintf(stdout,"(&arule_eng)[1] - arule_eng: %d\n", (&arule_eng)[1] - arule_eng);
-	//fprintf(stdout,"sizeof(arule_eng)/sizeof(*arule_eng): %d\n", sizeof(arule_eng)/sizeof(*arule_eng));
-	//fflush(stdout);
-	//fprintf(stdout,"trying to print size of arule_test array, should be 33\n");
-	//fprintf(stdout,"sizeof(&tst.arule_test): %d\n", sizeof(&tst.arule_test));
-	//fprintf(stdout,"(&tst.arule_test)[1] - tst.arule_test: %d\n", (&tst.arule_test)[1] - tst.arule_test);
-	//fprintf(stdout,"sizeof(tst.arule_test)/sizeof(*tst.arule_test): %d\n", sizeof(tst.arule_test)/sizeof(*tst.arule_test));
-	//fprintf(stdout,"%d",ruleset[1].num_rules);
-	//fflush(stdout);
-
-
-//	fclose(out);
 
 	return 0;
 }
