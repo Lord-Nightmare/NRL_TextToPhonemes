@@ -1,5 +1,8 @@
-// license:License-shortname
-// copyright-holders:copyright holder names, comma delimited
+// license:All rights Reserved (for now, contact about licensing if you need it)
+// copyright-holders:Jonathan Gevaryahu
+// Reimplementation of the Naval Research Laboratory's Text to Phoneme ruleset parser.
+// Preliminary version using NRL ruleset, this is very incomplete.
+// Copyright (C)2021-2024 Jonathan Gevaryahu
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,7 +27,7 @@ typedef uint64_t u64;
 #define RULES_NUMBERS 27
 
 // verbose macro
-#define v_printf(v, ...) \
+#define e_printf(v, ...) \
 	do { if (v) { fprintf(stderr, __VA_ARGS__); fflush(stderr); } } while (0)
 
 // verbosity defines; V_DEBUG can be changed here to enable/disable debug messages
@@ -110,17 +113,17 @@ void vec_char32_append(vec_char32* l, char32_t a)
 
 void vec_char32_dbg_stats(vec_char32* l)
 {
-	v_printf(V_DEBUG,"DEBUG: vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
+	e_printf(V_DEBUG,"DEBUG: vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
 }
 
 void vec_char32_dbg_print(vec_char32* l)
 {
-	v_printf(V_DEBUG,"DEBUG: vec_char32 contents: '");
+	e_printf(V_DEBUG,"DEBUG: vec_char32 contents: '");
 	for (u32 i=0; i < l->elements; i++)
 	{
-		v_printf(V_DEBUG,"%c", (char)l->data[i]);
+		e_printf(V_DEBUG,"%c", (char)l->data[i]);
 	}
-	v_printf(V_DEBUG,"'\n");
+	e_printf(V_DEBUG,"'\n");
 }
 
 // ruleset struct to point to all the rulesets for each letter/punct/etc
@@ -245,19 +248,19 @@ u32 preprocess(vec_char32* in, vec_char32* out, u32 in_offset)
 		}
 		else if (isIllegalPunct(in->data[i]))
 		{
-			//v_printf(V_DEBUG,"got illegal punctuation of '%c'\n",in->data[i]);
+			//e_printf(V_DEBUG,"got illegal punctuation of '%c'\n",in->data[i]);
 			continue; // skip illegal punctuation characters
 		}
 		else if (isPunctNoSpace(in->data[i])) // special case for punctuation
 		{
-			//v_printf(V_DEBUG,"got non-space punctuation of '%c'\n",in->data[i]);
+			//e_printf(V_DEBUG,"got non-space punctuation of '%c'\n",in->data[i]);
 			vec_char32_append(out, ' ');
 			vec_char32_append(out, in->data[i]);
 			vec_char32_append(out, ' ');
 		}
 		else if (in->data[i] == ' ') // special case for space, make sure we do not append successive spaces
 		{
-			//v_printf(V_DEBUG,"got space punctuation of '%c'\n",in->data[i]);
+			//e_printf(V_DEBUG,"got space punctuation of '%c'\n",in->data[i]);
 			if ((out->elements > 0) && (out->data[out->elements-1] != ' '))
 			{
 				vec_char32_append(out, in->data[i]);
@@ -265,10 +268,10 @@ u32 preprocess(vec_char32* in, vec_char32* out, u32 in_offset)
 		}
 		else if (isalpha(in->data[i]) || isdigit(in->data[i]))
 		{
-			//v_printf(V_DEBUG,"got alphanumeric of '%c'\n",in->data[i]);
+			//e_printf(V_DEBUG,"got alphanumeric of '%c'\n",in->data[i]);
 			vec_char32_append(out, toupper(in->data[i]));
 		}
-		else v_printf(V_DEBUG,"Unknown character 0x%x in input stream\n", in->data[i]);
+		else e_printf(V_DEBUG,"Unknown character 0x%x in input stream\n", in->data[i]);
 	}
 	// reached end of input, i.e. an implicit '#'
 	return i; // we incremented past the end of input, so just return i
@@ -383,7 +386,7 @@ bool parseRule(const char* const rule, const vec_char32* const input, const u32 
 			return false;
 		}
 	}
-	v_printf(V_DEBUG,"Left half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
+	e_printf(V_DEBUG,"Left half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
 	// find right end
 	s32 right = strnfind(rule, ']', ruleLen);
 	if (rule[right+1] != '=')
@@ -394,7 +397,7 @@ bool parseRule(const char* const rule, const vec_char32* const input, const u32 
 			return false;
 		}
 	}
-	v_printf(V_DEBUG,"Right half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
+	e_printf(V_DEBUG,"Right half of rule %s matched input string %s at offset %d\n", rule, input, inpos);
 	return true;
 }
 
@@ -417,13 +420,13 @@ s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const inpu
 	// iterate over every one of these rules and halt on the first match
 	for (u32 i = 0; i < ruleset[rulenum].num_rules; i++)
 	{
-		v_printf(V_DEBUG, "found a rule %s\n", ruleset[rulenum].rule[i]);
+		e_printf(V_DEBUG, "found a rule %s\n", ruleset[rulenum].rule[i]);
 		if (applyRule(ruleset[rulenum].rule[i]) < 0)
 		{
-			v_printf(V_DEBUG,"ERROR: encountered an invalid rule for character at position %d (%c)!\n", inpos, input->data[inpos]);
+			e_printf(V_DEBUG,"ERROR: encountered an invalid rule for character at position %d (%c)!\n", inpos, input->data[inpos]);
 			exit(1);
 		}
-		//v_printf(V_DEBUG, "this rule would consume %d characters\n", applyRule(ruleset[rulenum].rule[i]));
+		//e_printf(V_DEBUG, "this rule would consume %d characters\n", applyRule(ruleset[rulenum].rule[i]));
 		if (parseRule(ruleset[rulenum].rule[i], input, inpos))
 		{
 			return applyRule(ruleset[rulenum].rule[i]);
@@ -435,15 +438,15 @@ s32 processLetter(const sym_ruleset* const ruleset, const vec_char32* const inpu
 void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input)
 {
 	u32 curpos = 0;
-	v_printf(V_DEBUG, "processPhrase called, phrase has %d elements\n", input->elements);
+	e_printf(V_DEBUG, "processPhrase called, phrase has %d elements\n", input->elements);
 	while (curpos <= input->elements)
 	{
-		v_printf(V_DEBUG, "position is now %d (%c)\n", curpos, input->data[curpos]);
+		e_printf(V_DEBUG, "position is now %d (%c)\n", curpos, input->data[curpos]);
 		u32 oldpos = curpos;
 		curpos += processLetter(ruleset, input, curpos);
 		if (curpos - oldpos == 0)
 		{
-			v_printf(V_DEBUG,"WARNING: unable to match any rule for position %d (%c)!\n", curpos, input->data[curpos]);
+			e_printf(V_DEBUG,"WARNING: unable to match any rule for position %d (%c)!\n", curpos, input->data[curpos]);
 			curpos++;
 		}
 	}
@@ -1001,7 +1004,7 @@ int main(int argc, char **argv)
 	{
 		vec_char32_append(d_in,dataArray[i]);
 	}
-	v_printf(V_DEBUG,"Input phrase stats are:\n");
+	e_printf(V_DEBUG,"Input phrase stats are:\n");
 	vec_char32_dbg_stats(d_in);
 	vec_char32_dbg_print(d_in);
 
@@ -1018,10 +1021,10 @@ int main(int argc, char **argv)
 		vec_char32* d_pre = vec_char32_alloc(4);
 		// preprocess d_in into d_pre
 		phrase_offset = preprocess(d_in, d_pre, phrase_offset);
-		v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
+		e_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
 		vec_char32_dbg_stats(d_pre);
 		vec_char32_dbg_print(d_pre);
-		v_printf(V_DEBUG,"Input phrase offset is now %d\n", phrase_offset);
+		e_printf(V_DEBUG,"Input phrase offset is now %d\n", phrase_offset);
 
 		// do stuff with preprocessed phrase here
 		// i.e. the rest of the owl

@@ -32,9 +32,9 @@ typedef uint64_t u64;
 #undef ORIGINAL_BUGS
 
 // verbose macros
-#define v_printf(v, ...) \
+#define e_printf(v, ...) \
 	do { if (v) { fprintf(stderr, __VA_ARGS__); fflush(stderr); } } while (0)
-#define eprintf(v, ...) \
+#define o_printf(v, ...) \
 	do { if (v) { fprintf(stdout, __VA_ARGS__); fflush(stdout); } } while (0)
 
 // verbosity defines; V_DEBUG can be changed here to enable/disable debug messages
@@ -109,17 +109,17 @@ void vec_char32_append(vec_char32* l, char32_t a)
 
 void vec_char32_dbg_stats(vec_char32* l)
 {
-	v_printf(V_DEBUG,"vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
+	e_printf(V_DEBUG,"vec_char32 capacity: %d, elements: %d\n", l->capacity, l->elements);
 }
 
 void vec_char32_dbg_print(vec_char32* l)
 {
-	v_printf(V_DEBUG,"vec_char32 contents: '");
+	e_printf(V_DEBUG,"vec_char32 contents: '");
 	for (u32 i=0; i < l->elements; i++)
 	{
-		v_printf(V_DEBUG,"%c", (char)l->data[i]);
+		e_printf(V_DEBUG,"%c", (char)l->data[i]);
 	}
-	v_printf(V_DEBUG,"'\n");
+	e_printf(V_DEBUG,"'\n");
 }
 
 // ruleset struct to point to all the rulesets for each letter/punct/etc
@@ -285,7 +285,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 	u32 i = 0;
 	for (i = 0; i < ruleset.num_rules; i++)
 	{
-		v_printf(V_SEARCH, "found a rule %s\n", ruleset.rule[i]);
+		e_printf(V_SEARCH, "found a rule %s\n", ruleset.rule[i]);
 		// part 1: check the exact match section of the rule, between the parentheses
 		// (and get the indexes to the two parentheses and the equals symbol, which will be used in parts 2 and 3)
 		s32 lparen_idx = -1;
@@ -298,7 +298,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		lparen_idx = strnfind(ruleset.rule[i], LPAREN, rulelen);
 		rparen_idx = strnfind(ruleset.rule[i], RPAREN, rulelen);
 		equals_idx = strnfind(ruleset.rule[i], '=', rulelen);
-		v_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, rulelen);
+		e_printf(V_DEBUG, "  safe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, rulelen);
 		*/
 		/* faster but less safe... will run off the end of the rule string if a rule has no equals sign and doesn't end with a NULL '/0'
 		 (which should never happen) */
@@ -321,9 +321,9 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				equals_idx = j;
 		}
 		//rulelen = j;
-		//v_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, j);
+		//e_printf(V_DEBUG, "unsafe: left paren found at %d, right paren found at %d, equals found at %d, rulelen was %d\n", lparen_idx, rparen_idx, equals_idx, j);
 		int nbase = (rparen_idx - 1) - lparen_idx; // number of letters in exact match part of the rule
-		//v_printf(V_DEBUG, "n calculated to be %d\n", n);
+		//e_printf(V_DEBUG, "n calculated to be %d\n", n);
 
 		// part1: compare exact match; basically a slightly customized 'strncmp()'
 		{
@@ -331,7 +331,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			int offset = 0; // offset within rule of exact match
 			while ( n && (input->data[inpos+offset]) && (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+1+offset]) )
 			{
-				//v_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
+				//e_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
 				offset++;
 				n--;
 			}
@@ -340,12 +340,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			{
 				if (!input->data[inpos+offset])
 				{
-					v_printf(V_DEBUG, "strncmp got null/end of string, bailing out!\n");
+					e_printf(V_DEBUG, "strncmp got null/end of string, bailing out!\n");
 					break;
 				}
 				else
 				{
-					v_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
+					e_printf(V_DEBUG, "strncmp - attempting to match %c(%02x) to %c(%02x)\n",input->data[inpos+offset],input->data[inpos+offset],ruleset.rule[i][lparen_idx+1+offset],ruleset.rule[i][lparen_idx+1+offset] );
 					if (input->data[inpos+offset] == ruleset.rule[i][lparen_idx+1+offset])
 					{
 						offset++;
@@ -357,10 +357,10 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 				}
 			}
 			*/
-			//v_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
+			//e_printf(V_DEBUG, "attempted strncmp of rule resulted in %d\n",n);
 			if (n != 0) continue; // mismatch, go to next rule.
 			// if we got here, the fixed part of the rule matched.
-			v_printf(V_SEARCH2, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], lparen_idx+1);
+			e_printf(V_SEARCH2, "rule %s matched the input string, at rule offset %d\n", ruleset.rule[i], lparen_idx+1);
 		}
 
 		// part2: match the rule prefix
@@ -374,7 +374,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			{
 				rulechar = ruleset.rule[i][lparen_idx+ruleoffset];
 				inpchar = input->data[inpos+inpoffset];
-				v_printf(V_SEARCH2, "rulechar is %c(%02x) at ruleoffset %d, inpchar is %c(%02x) at inpoffset %d\n", rulechar, rulechar, lparen_idx+ruleoffset, inpchar, inpchar, inpos+inpoffset);
+				e_printf(V_SEARCH2, "rulechar is %c(%02x) at ruleoffset %d, inpchar is %c(%02x) at inpoffset %d\n", rulechar, rulechar, lparen_idx+ruleoffset, inpchar, inpchar, inpos+inpoffset);
 				if (isLetter(rulechar, c)) // letter in rule matches that letter exactly, only.
 				{
 					// it's a letter, directly compare it to the input character
@@ -413,7 +413,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// special check here for the case where the rule has '##' in it
 					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '#') ) // '##' case
 					{
-						v_printf(V_ERULES, "found a prefix rule with the problematic ## case\n");
+						e_printf(V_ERULES, "found a prefix rule with the problematic ## case\n");
 						// check for two vowels, plus any more.
 						if (isVowel(inpchar,c) && (inpos+(inpoffset-1) >= 0) && isVowel(input->data[inpos+(inpoffset-1)],c))
 						{
@@ -587,7 +587,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					bool singleBeforeMulti = false;
 					if ( (lparen_idx+(ruleoffset-1) >= 0) && ( ruleset.rule[i][lparen_idx+(ruleoffset-1)] == '^') ) // '^:' case
 					{
-						v_printf(V_ERULES, "found a prefix rule with the problematic ^: case\n");
+						e_printf(V_ERULES, "found a prefix rule with the problematic ^: case\n");
 						singleBeforeMulti = true;
 					}
 					bool matchedCons = false;
@@ -662,7 +662,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #endif
 				else
 				{
-					v_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
+					e_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
 					exit(1);
 				}
 			}
@@ -680,7 +680,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 			{
 				rulechar = ruleset.rule[i][rparen_idx+ruleoffset];
 				inpchar = input->data[inpos+inpoffset];
-				v_printf(V_SEARCH2, "rulechar is %c(%02x) at ruleoffset %d, inpchar is %c(%02x) at inpoffset %d\n", rulechar, rulechar, rparen_idx+ruleoffset, inpchar, inpchar, inpos+inpoffset);
+				e_printf(V_SEARCH2, "rulechar is %c(%02x) at ruleoffset %d, inpchar is %c(%02x) at inpoffset %d\n", rulechar, rulechar, rparen_idx+ruleoffset, inpchar, inpchar, inpos+inpoffset);
 				if (isLetter(rulechar, c)) // letter in rule matches that letter exactly, only.
 				{
 					// it's a letter, directly compare it to the input character
@@ -719,7 +719,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					// special check here for the case where the rule has '##' in it
 					if ( (rparen_idx+ruleoffset+1 < equals_idx) && (ruleset.rule[i][rparen_idx+ruleoffset+1] == '#') ) // '##' case
 					{
-						v_printf(V_ERULES, "found a suffix rule with the problematic ## case\n");
+						e_printf(V_ERULES, "found a suffix rule with the problematic ## case\n");
 						// check for two vowels, plus any more.
 						if (isVowel(inpchar,c) && (inpos+inpoffset+1 <= input->elements) && isVowel(input->data[inpos+inpoffset+1],c))
 						{
@@ -1022,7 +1022,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #endif
 				else
 				{
-					v_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
+					e_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
 					exit(1);
 				}
 			}
@@ -1033,7 +1033,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 		// consume the number of characters between the parentheses by returning inpos + that number
 		{
 			// crude strcpy
-			v_printf(V_RULES, "%s\n",ruleset.rule[i]);
+			e_printf(V_RULES, "%s\n",ruleset.rule[i]);
 			while (ruleset.rule[i][++equals_idx] != '\0')
 			{
 				vec_char32_append(output, ruleset.rule[i][equals_idx]);
@@ -1044,11 +1044,11 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 	// did we break out with a valid rule?
 	if (i == ruleset.num_rules)
 	{
-		v_printf(V_ERR, "unable to find any matching rule, exiting!\n");
+		e_printf(V_ERR, "unable to find any matching rule, exiting!\n");
 		exit(1);
 	}
 	// we should never get here.
-	v_printf(V_ERR, "something very bad happened, exiting!\n");
+	e_printf(V_ERR, "something very bad happened, exiting!\n");
 	exit(1);
 	// we should especially never get here.
 	return inpos;
@@ -1056,29 +1056,29 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 
 void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const input, vec_char32* output, s_cfg c)
 {
-	v_printf(V_MAINLOOP, "processPhrase called, phrase has %d elements\n", input->elements);
+	e_printf(V_MAINLOOP, "processPhrase called, phrase has %d elements\n", input->elements);
 	s32 inpos = -1;
 	char32_t inptemp;
 	while (((inptemp = input->data[++inpos])||(1)) && (inptemp != RECITER_END_CHAR)) // was (curpos < input->elements)
 	{
-		v_printf(V_MAINLOOP, "position is now %d (%c)\n", inpos, input->data[inpos]);
+		e_printf(V_MAINLOOP, "position is now %d (%c)\n", inpos, input->data[inpos]);
 		if (input->data[inpos] == '.') // is this character a period?
 		{
-			v_printf(V_MAINLOOP, "character is a period...\n");
+			e_printf(V_MAINLOOP, "character is a period...\n");
 			if (isDigit(input->data[++inpos], c)) // is the character after the period a digit? // TODO: verify there isn't a bug here with consuming an extra input item 
 			{
-				v_printf(V_MAINLOOP, " followed by a digit...\n");
+				e_printf(V_MAINLOOP, " followed by a digit...\n");
 				u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
 				if (isPunct(inptemp, c)) // if the initial character was punctuation
 				{
-					v_printf(V_MAINLOOP, " and the character before the period was a punctuation symbol!\n");
+					e_printf(V_MAINLOOP, " and the character before the period was a punctuation symbol!\n");
 					// look up PUNCT_DIGIT rules
 					inpos = processRule(ruleset[RULES_PUNCT_DIGIT], input, inpos, output, c);
 					// THIS CASE IS FINISHED
 				}
 				else
 				{
-					v_printf(V_MAINLOOP, " but the character before the period was not a punctuation symbol.\n");
+					e_printf(V_MAINLOOP, " but the character before the period was not a punctuation symbol.\n");
 					if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
 					{
 						//TODO(optional): original code clobbers the input string character with a space as well
@@ -1094,7 +1094,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 						}
 						else
 						{
-							v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
+							e_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
 							exit(1);
 							// THIS CASE IS FINISHED
 						}
@@ -1103,25 +1103,25 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 			}
 			else
 			{
-				v_printf(V_MAINLOOP, " but not followed by a digit, so treat it as a pause.\n");
+				e_printf(V_MAINLOOP, " but not followed by a digit, so treat it as a pause.\n");
 				vec_char32_append(output, '.'); // add a period to the output word.
 				// THIS CASE IS FINISHED
 			}
 		}
 		else
 		{
-			v_printf(V_MAINLOOP, "character is not a period...");
+			e_printf(V_MAINLOOP, "character is not a period...");
 			u8 inptemp_features = c.ascii_features[inptemp&0x7f]; // save features from initial character
 			if (isPunct(inptemp, c)) // if the initial character was punctuation
 			{
-				v_printf(V_MAINLOOP, " and the initial character was a punctuation symbol!\n");
+				e_printf(V_MAINLOOP, " and the initial character was a punctuation symbol!\n");
 				// look up PUNCT_DIGIT rules
 				inpos = processRule(ruleset[RULES_PUNCT_DIGIT], input, inpos, output, c);
 				// THIS CASE IS FINISHED
 			}
 			else
 			{
-				v_printf(V_MAINLOOP, " but the initial charater was not a punctuation symbol.\n");
+				e_printf(V_MAINLOOP, " but the initial charater was not a punctuation symbol.\n");
 				if (!inptemp_features) // if the feature was set to \0, then completely ignore this character.
 				{
 					//TODO(optional): original code clobbers the input string character with a space as well
@@ -1137,7 +1137,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 					}
 					else
 					{
-						v_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
+						e_printf(V_ERR, "found a character that isn't punct/digit, nor letter, nor null, bail out!\n");
 						exit(1);
 						// THIS CASE IS FINISHED
 					}
@@ -1748,8 +1748,8 @@ int main(int argc, char **argv)
 				break;
 			case 'v':
 				paramidx++;
-				if (paramidx == (argc-0)) { v_printf(V_ERR,"E* Too few arguments for -v parameter!\n"); usage(); exit(1); }
-				if (!sscanf(argv[paramidx], "%d", &c.verbose)) { v_printf(V_ERR,"E* Unable to parse argument for -v parameter!\n"); usage(); exit(1); }
+				if (paramidx == (argc-0)) { e_printf(V_ERR,"E* Too few arguments for -v parameter!\n"); usage(); exit(1); }
+				if (!sscanf(argv[paramidx], "%d", &c.verbose)) { e_printf(V_ERR,"E* Unable to parse argument for -v parameter!\n"); usage(); exit(1); }
 				paramidx++;
 				break;
 			case '\0':
@@ -1757,11 +1757,11 @@ int main(int argc, char **argv)
 				paramidx++;
 				break;
 			default:
-				{ v_printf(V_ERR,"E* Invalid option!\n"); usage(); exit(1); }
+				{ e_printf(V_ERR,"E* Invalid option!\n"); usage(); exit(1); }
 				break;
 		}
 	}
-	v_printf(V_PARAM,"D* Parameters: verbose: %d\n", c.verbose);
+	e_printf(V_PARAM,"D* Parameters: verbose: %d\n", c.verbose);
 
 
 	if (argc < 2)
@@ -1775,7 +1775,7 @@ int main(int argc, char **argv)
 	FILE *in = fopen(argv[1], "rb");
 	if (!in)
 	{
-		v_printf(V_ERR,"E* Unable to open input file %s!\n", argv[1]);
+		e_printf(V_ERR,"E* Unable to open input file %s!\n", argv[1]);
 		return 1;
 	}
 
@@ -1786,7 +1786,7 @@ int main(int argc, char **argv)
 	uint8_t *dataArray = (uint8_t *) malloc((len) * sizeof(uint8_t));
 	if (dataArray == NULL)
 	{
-		v_printf(V_ERR,"E* Failure to allocate memory for array of size %d, aborting!\n", len);
+		e_printf(V_ERR,"E* Failure to allocate memory for array of size %d, aborting!\n", len);
 		fclose(in);
 		return 1;
 	}
@@ -1796,12 +1796,12 @@ int main(int argc, char **argv)
 		fclose(in);
 		if (temp != len)
 		{
-			v_printf(V_ERR,"E* Error reading in %d elements, only read in %d, aborting!\n", len, temp);
+			e_printf(V_ERR,"E* Error reading in %d elements, only read in %d, aborting!\n", len, temp);
 			free(dataArray);
 			dataArray = NULL;
 			return 1;
 		}
-		v_printf(V_PARSE,"D* Successfully read in %d bytes\n", temp);
+		e_printf(V_PARSE,"D* Successfully read in %d bytes\n", temp);
 	}
 
 	// actual program goes here
@@ -1814,7 +1814,7 @@ int main(int argc, char **argv)
 	{
 		vec_char32_append(d_raw,dataArray[i]);
 	}
-	//v_printf(V_DEBUG,"Input phrase stats are:\n");
+	//e_printf(V_DEBUG,"Input phrase stats are:\n");
 	//vec_char32_dbg_stats(d_raw);
 	//vec_char32_dbg_print(d_raw);
 
@@ -1828,7 +1828,7 @@ int main(int argc, char **argv)
 	preProcess(d_raw, d_in, c);
 	vec_char32_free(d_raw);
 
-	//v_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
+	//e_printf(V_DEBUG,"Preprocessing done, stats are now:\n");
 	//vec_char32_dbg_stats(d_in);
 	vec_char32_dbg_print(d_in);
 
@@ -1837,7 +1837,7 @@ int main(int argc, char **argv)
 	vec_char32* d_out = vec_char32_alloc(4);
 	processPhrase(ruleset, d_in, d_out, c);
 	vec_char32_free(d_in);
-	//v_printf(V_DEBUG,"Processing done, stats are now:\n");
+	//e_printf(V_DEBUG,"Processing done, stats are now:\n");
 	//vec_char32_dbg_stats(d_out);
 	vec_char32_dbg_print(d_out);
 
