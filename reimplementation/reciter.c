@@ -496,6 +496,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					{
 						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
 						// we can't be at offset less than 1 here, so it is always safe to index back one more character
+						// unlike many other similar tests in the original reciter code, this one actually works.
 						inpchar = input->data[inpos+(inpoffset-1)]; // load another char...
 						if ((inpchar == 'C') || (inpchar == 'S'))
 						{
@@ -515,7 +516,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '@') // @ matches any unvoiced affricative aka nonpalate; note special cases for TH, CH, SH
+				else if (rulechar == '@') // @ matches any unvoiced affricate aka nonpalate; note special cases for TH, CH, SH
 				{
 					if (isUaff(inpchar,c))
 					{
@@ -526,6 +527,8 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					else if (inpchar == 'H') // could be TH, CH or SH!; NOTE: the original reciter has a bug here and these tests ALWAYS fail!
 					{
 #ifdef ORIGINAL_BUGS
+						// The original code forgets to decrement the pointer and load another character, so it compares
+						// the already loaded and compared 'H' against 'T', 'C', and 'S', which will always fail!
 						fail = true;
 #else
 						// the beginning of the input array is ALWAYS a space, so since we saw an 'H'
@@ -790,9 +793,10 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '&') // & matches any sibilant; note the special cases for CH and SH which must be tested FIRST since 'C' and 'S' are sibilants!
+				else if (rulechar == '&') // & matches any sibilant;
+				// note the special cases for CH and SH which must be tested FIRST since 'C' and 'S' are themselves sibilants!
 				{
-					// the original code is EXTREMELY BUGGY here, probably improperly copy-pasted from the prefix check code.
+					// the original code is buggy here, probably improperly copy-pasted from the prefix check code.
 #ifdef ORIGINAL_BUGS
 					if (isSibil(inpchar,c))
 					{
@@ -842,16 +846,17 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '@') // @ matches any unvoiced affricative aka nonpalate; note special cases for TH, CH, SH
+				else if (rulechar == '@') // @ matches any unvoiced affricate aka nonpalate
+				// note the special cases for TH, CH, SH must be tested FIRST since T and S are themselves unvoiced affricates!
 				{
+#ifdef ORIGINAL_BUGS
+					// the original code is EXTREMELY BUGGY here: not only would it incorrectly check for 'HT' 'HC' and 'HS', but like the prefix version it forgets to increment the pointer and read the next byte, so it checks for 'H', then immediately checks that the 'H' is equal to 'T', 'C' or 'S', which will always fail! It also checks for isUaff BEFORE it checks for the 2 letter versions, which means it would never match 'TH' or 'SH' as it would match the 1-letter 'T' and 'S' first anyway!
 					if (isUaff(inpchar,c))
 					{
 						// match
 						ruleoffset++;
 						inpoffset++;
 					}
-					// could be TH, CH or SH! original code is EXTREMELY BUGGY here and these tests ALWAYS fail!
-#ifdef ORIGINAL_BUGS
 					else if (inpchar == 'H')
 					{
 						fail = true;
@@ -860,7 +865,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						// 'H' against the constants 'T', 'C', and 'S' without advancing to the next input character.
 					}
 #else
-					else if ( (inpchar == 'T') && (inpos+inpoffset+1 <= input->elements)
+					if ( (inpchar == 'T') && (inpos+inpoffset+1 <= input->elements)
 						&& (input->data[inpos+inpoffset+1] == 'H') ) // 'TH' case
 					{
 						// match 2 characters
@@ -880,6 +885,12 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						// match 2 characters
 						ruleoffset++;
 						inpoffset += 2;
+					}
+					else if (isUaff(inpchar,c))
+					{
+						// match 1 character
+						ruleoffset++;
+						inpoffset++;
 					}
 #endif
 					else
