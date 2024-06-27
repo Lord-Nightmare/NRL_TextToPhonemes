@@ -1,7 +1,6 @@
 // license:All rights Reserved (for now, contact about licensing if you need it)
 // copyright-holders:Jonathan Gevaryahu
 // Reimplementation of the Don't Ask Computer Software/Softvoice 'reciter'/'translator' engine
-// Preliminary version using NRL ruleset, this is very incomplete.
 // Copyright (C)2021-2024 Jonathan Gevaryahu
 #include <stdio.h>
 #include <stdint.h>
