@@ -29,6 +29,9 @@ typedef uint64_t u64;
 #define SUPPORT_CONS1EI 1
 #undef NRL_VOWEL
 #undef ORIGINAL_BUGS
+#define C64_ADDED_RULES 1
+#undef C64_RULES_BUGS
+#define APPLE_RULES_VARIANT 1
 
 // verbose macros
 #define e_printf(v, ...) \
@@ -134,18 +137,21 @@ typedef struct sym_ruleset
 // Punctuation characters that do not end a word "!\"#$%\'*+,-./0123456789:;<=>?@^"
 // Note the punctuation characters that DO end a word or otherwise have special handling are " ()[\]_"
 #define A_PUNCT 0x02
-// Unvoiced Affricate, aka Non-Palate or 'NONPAL' "DJLNRSTZ"
+// @ Unvoiced Affricate, aka Non-Palate or 'NONPAL' "DJLNRSTZ" plus "CH", "SH", and "TH"
 #define A_UAFF 0x04
-// Voiced consonants "BDGJLMNRVWZ"
+// . Voiced consonants "BDGJLMNRVWZ"
 #define A_VOICED 0x08
-// Sibilants "CGJSXZ"
+// & Sibilants "CGJSXZ" plus "CH" and "SH"
 #define A_SIBIL 0x10
-// Consonants "BCDFGHJKLMNPQRSTVWXZ"
+// *:^ Consonants "BCDFGHJKLMNPQRSTVWXZ"
 #define A_CONS 0x20
-// Vowels "AEIOUY"
+// # Vowels "AEIOUY"
 #define A_VOWEL 0x40
 // Letters "ABCDEFGHIJKLMNOPQRSTUVWXYZ'" - any character with this flag has a rule attached to it, this includes the apostrophe
 #define A_LETTER 0x80
+// $ Consonant followed by I or E is handled in the code itself
+// + Front vowel is handled in the code itself
+// % Suffix is handled in the code itself
 
 // 'global' struct
 typedef struct s_cfg
@@ -1347,7 +1353,9 @@ int main(int argc, char **argv)
 			"[CITY]=SIHTIY",
 			"[C]+=S",
 			"[CK]=K",
+#ifdef C64_ADDED_RULES
 			"[COMMODORE]=KAA4MAHDOHR",
+#endif
 			"[COM]=KAHM",
 			"[CUIT]=KIHT",
 			"[CREA]=KRIYEY",
@@ -1594,13 +1602,28 @@ int main(int argc, char **argv)
 			"[O]NG=AO",
 			" :^[O]N=AH",
 			"I[ON]=UN",
+#ifdef C64_RULES_BUGS
+			// missing a space before =
 			"#:[ON]=UN",
+#else
+			"#:[ON] =UN",
+#endif
 			"#^[ON]=UN",
+#ifdef C64_RULES_BUGS
+			// missing a space before =
 			"[O]ST=OW",
+#else
+			"[O]ST =OW",
+#endif
 			"[OF]^=AO4F",
 			"[OTHER]=AH5DHER",
 			"R[O]B=RAA",
+#ifdef APPLE_RULES_VARIANT
+			// is this to make "PRODOS" pronounced slightly better? or just a transcription mistake?
+			"PR[O]:#=ROW5",
+#else
 			"^R[O]:#=OW5",
+#endif
 			"[OSS] =AO5S",
 			"#:^[OM]=AHM",
 			"[O]=AA",
@@ -1614,9 +1637,17 @@ int main(int argc, char **argv)
 			"[POW]=PAW4",
 			"[PUT] =PUHT",
 			"[P]P=",
+#ifdef C64_RULES_BUGS
+			// missing the preceding space, to force these to only start at the beginning of a word
 			"[P]S=",
 			"[P]N=",
 			"[PROF.]=PROHFEH4SER",
+#else
+			// the apple version has these two next rules in the opposite order, but it makes absolutely no difference as the two rules are mutually exclusive due to the leading space
+			" [P]S=",
+			" [P]N=",
+			" [PROF.]=PROHFEH4SER",
+#endif
 			"[P]=P",
 		};
 
@@ -1630,7 +1661,12 @@ int main(int argc, char **argv)
 
 		const char* const rrule_eng[] =
 		{
+#ifdef APPLE_RULES_VARIANT
+			// the apple port has a different stress marker for this rule
+			" [R] =AA4R",
+#else
 			" [R] =AA5R",
+#endif
 			" [RE]^#=RIY",
 			"[R]R=",
 			"[R]=R",
@@ -1646,7 +1682,12 @@ int main(int argc, char **argv)
 			"[SUR]#=SHER",
 			"#[SU]#=ZHUW",
 			"#[SSU]#=SHUW",
+#ifdef C64_RULES_BUGS
+			// missing a space before =
 			"#[SED]=ZD",
+#else
+			"#[SED] =ZD",
+#endif
 			"#[S]#=Z",
 			"[SAID]=SEHD",
 			"^[SION]=SHUN",
@@ -1660,7 +1701,12 @@ int main(int argc, char **argv)
 			" [SCH]=SK",
 			"[S]C+=",
 			"#[SM]=ZUM",
+#ifdef C64_RULES_BUGS
+			// this is a copy-paste error, and screws up the pronunciation of the word "wasn't"
 			"#[SN]'=ZUM",
+#else
+			"#[SN]'=ZUN",
+#endif
 			"[STLE]=SUL",
 			"[S]=S",
 		};
@@ -1678,7 +1724,12 @@ int main(int argc, char **argv)
 			"[THER]=DHER",
 			"[THEIR]=DHEHR",
 			" [THAN] =DHAEN",
+#ifdef C64_RULES_BUGS
+			// this is a copy-paste error, and screws up the pronunciation of the word "them"
 			" [THEM] =DHAEN",
+#else
+			" [THEM] =DHEHM",
+#endif
 			"[THESE] =DHIYZ",
 			" [THEN]=DHEHN",
 			"[THROUGH]=THRUW4",
@@ -1689,7 +1740,12 @@ int main(int argc, char **argv)
 			"[TO]TAL=TOW5",
 			" [THUS]=DHAH4S",
 			"[TH]=TH",
+#ifdef C64_RULES_BUGS
+			// missing a space before =
 			"#:[TED]=TIXD",
+#else
+			"#:[TED] =TIXD",
+#endif
 			"S[TI]#N=CH",
 			"[TI]O=SH",
 			"[TI]A=SH",
@@ -1697,7 +1753,13 @@ int main(int argc, char **argv)
 			"[TUR]#=CHER",
 			"[TU]A=CHUW",
 			" [TWO]=TUW",
+#ifdef APPLE_RULES_VARIANT
+			// the apple version of this rule drops the space before the =, and adds another rule below specific to starting with 'F' for the word '[s]often'
+			"&[T]EN=",
+			"F[T]EN=",
+#else
 			"&[T]EN =",
+#endif
 			"[T]=T",
 		};
 
@@ -1755,7 +1817,12 @@ int main(int argc, char **argv)
 
 		const char* const xrule_eng[] =
 		{
+#ifdef C64_RULES_BUGS
+			// this is a typo and should be EH4KS to pronounce the letter properly
 			" [X] =EH4KR",
+#else
+			" [X] =EH4KS",
+#endif
 			" [X]=Z",
 			"[X]=KS",
 		};
@@ -1770,7 +1837,12 @@ int main(int argc, char **argv)
 			" [Y]=Y",
 			"F[Y]=AY",
 			"PS[YCH]=AYK",
+#ifdef C64_RULES_BUGS
+			// missing a space before =
 			"#:^[Y]=IY",
+#else
+			"#:^[Y] =IY",
+#endif
 			"#:^[Y]I=IY",
 			" :[Y] =AY",
 			" :[Y]#=AY",
@@ -1814,7 +1886,9 @@ int main(int argc, char **argv)
 			"[4]= FOH4R",
 			" [5TH]=FIH4FTH",
 			"[5]= FAY4V",
+#ifdef C64_ADDED_RULES
 			" [64] =SIH4KSTIY FOHR",
+#endif
 			"[6]= SIH4KS",
 			"[7]= SEH4VUN",
 			" [8TH]=EY4TH",
