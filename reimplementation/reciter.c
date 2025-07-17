@@ -29,9 +29,45 @@ typedef uint64_t u64;
 #define SUPPORT_CONS1EI 1
 #undef NRL_VOWEL
 #undef ORIGINAL_BUGS
+// There are at least three versions of the official RECITER ruleset:
+// 1. The version used on the Atari 800 initial release (as well as the Apple2 "Software Version" AKA "Son of SAM" unofficial hack, which is of the Atari version).
+#define RULES_ATARI 1
+// 2. The version used on the C64 release (which inadvertently added a bunch of bugs, as well as a few new commodore-specific rules). Despite being released after the apple2 version below, this version does not have the improved rules from that version!
+#define RULES_C64 2
+// 3. The version used on the Apple2 release (which used the DAC card, AKA the "Hardware Version").
+#define RULES_APPLE 3
+// And there are at least six additional rulesets used by the 68000 versions, post-SAM:
+// 4. The version used in the alpha of "MacTalk"
+#define RULES_MACTALK 4
+// 5. The version used in the beta/demo release (1.0?) of MacInTalk
+#define RULES_MACINTALKDEMO 5
+// 6. The version used in the final release (1.2 and 1.3) of MacInTalk
+#define RULES_MACINTALK 6
+// 7. The version used in the first v34 release of translator.device
+#define RULES_TRANSLATOR 7
+// 8. The version used in the later v37+ releases of translator.device
+// 9. The version used in SVTTS (v1) on Windows 3.1.
+// 10. The version used in SVTTS (v2) on Windows 3.1.
+// 11. The version used in SVTTS (v3) on Windows 3.1.
+// 12. The version used in SVTTS (v4) on Windows 3.1.
+// 13. The version used in TLTTS on Windows 95
+// 14. The version used in FruityLoops on Windows XP
+// 15. The version used in FL-Studio on Windows 7
+// There's also at least one bug caused by a transcription error from the IEEE paper in one rule.
+
+#define RULES_VERSION RULES_MACINTALK
+
+// this will add the commodore specific rules that might not appear in some rule versions anyway.
 #define C64_ADDED_RULES 1
+// this will add the bugs from the commodore specific ruleset if rule version 3 is requested
 #undef C64_RULES_BUGS
-#define APPLE_RULES_VARIANT 1
+// this will add the bugs from the apple specific ruleset if rule version 2 is requested
+#undef APPLE_RULES_BUGS
+// this will fix the IEEE transcription error (missing the first '^' in "^[OU]^L=AH5") in versions which had the error
+#define FIX_IEEE_ERROR 1
+
+// this will add an additional rule to fix the words 'juice', 'juicy', 'juicier' and 'sluice' etc where the i needs to be silent
+#define NEW_RULE_UIC 1
 
 // verbose macros
 #define e_printf(v, ...) \
@@ -558,7 +594,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '^') // ^ matches any consonant
+				else if (rulechar == '^') // ^ matches any one consonant
 				{
 					if (isCons(inpchar,c))
 					{
@@ -603,7 +639,6 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					while ((inpos+(inpoffset-1) >= 0) && isCons(inpchar,c))
 					{
 						matchedCons = true;
-						// match
 						inpoffset--;
 						inpchar = input->data[inpos+inpoffset];
 					}
@@ -665,6 +700,32 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					{
 						// mismatch
 						fail = true;
+					}
+				}
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+				// Mactalk and later has two extra rule characters: ? (single digit) and _ (zero or more digits)
+				else if (rulechar == '?') // ? matches any one digit
+				{
+					if (isDigit(inpchar,c))
+					{
+						// match
+						ruleoffset--;
+						inpoffset--;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '_') // _ matches zero or more digits; this test can't fail, but it can consume digits in the input
+				{
+					ruleoffset--;
+					while ((inpos+(inpoffset-1) >= 0) && isDigit(inpchar,c))
+					{
+						inpoffset--;
+						inpchar = input->data[inpos+inpoffset];
 					}
 				}
 #endif
@@ -904,7 +965,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '^') // ^ matches any consonant
+				else if (rulechar == '^') // ^ matches any single consonant
 				{
 					if (isCons(inpchar,c))
 					{
@@ -1036,6 +1097,32 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 #endif
+#if (RULES_VERSION >= RULES_MACTALK)
+				// Mactalk and later has two extra rule characters: ? (single digit) and _ (zero or more digits)
+				else if (rulechar == '?') // ? matches any single digit
+				{
+					if (isDigit(inpchar,c))
+					{
+						// match
+						ruleoffset++;
+						inpoffset++;
+					}
+					else
+					{
+						// mismatch
+						fail = true;
+					}
+				}
+				else if (rulechar == '_') // _ matches zero or more digits; this test can't fail, but it can consume digits in the input
+				{
+					ruleoffset++;
+					while ((inpos+inpoffset+1 <= input->elements) && isDigit(inpchar,c))
+					{
+						inpoffset++;
+						inpchar = input->data[inpos+inpoffset];
+					}
+				}
+#endif
 				else
 				{
 					e_printf(V_ERR, "got an invalid rule character of '%c'(0x%02x), exiting!\n", rulechar, rulechar);
@@ -1075,7 +1162,7 @@ void processPhrase(const sym_ruleset* const ruleset, const vec_char32* const inp
 	e_printf(V_MAINLOOP, "processPhrase called, phrase has %d elements\n", input->elements);
 	s32 inpos = -1;
 	char32_t inptemp;
-	while (((inptemp = input->data[++inpos])||(1)) && (inptemp != RECITER_END_CHAR)) // was (curpos < input->elements)
+	while (((inptemp = input->data[++inpos])||(1)) && (inptemp != RECITER_END_CHAR) && (inpos < input->elements))
 	{
 		e_printf(V_MAINLOOP, "position is now %d (%c)\n", inpos, input->data[inpos]);
 		if (input->data[inpos] == '.') // is this character a period?
@@ -1286,31 +1373,85 @@ int main(int argc, char **argv)
 	//{
 		const char* const arule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_TRANSLATOR)
+			" [A.]=EH3Y. ",
+#else
 			" [A.]=EH4Y. ",
+#endif
 			"[A] =AH",
 			" [ARE] =AAR",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [AND] =AEND",
+			" [AS] =AEZ",
+			" [AT] =AET",
+			" [AN] =AEN",
+#endif
+#if (RULES_VERSION >= RULES_TRANSLATOR)
+			" [AM] =AEM",
+			" [AREN'T] =AA1RINT",
+			" [ABOVE]=AHBAH3V",
+			" [AROUND]=AHRAW3ND",
+			"[A]DAP=AX",
+			" [AVE.] =AE2VINUW",
+#endif
 			" [AR]O=AXR",
+#if (RULES_VERSION >= RULES_TRANSLATOR)
+			"[AR]#=EHR",
+			" ^[AS]#=EYS",
+#elif ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[AR]#=EH4R ", // extra space
+			" ^[AS]#=EY4S",
+#else
 			"[AR]#=EH4R",
 			" ^[AS]#=EY4S",
+#endif
 			"[A]WA=AX",
+#if (RULES_VERSION >= RULES_TRANSLATOR)
+			"[AW]=AO",
+			" :[ANY]=EH3NIY",
+#elif ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[AW]=AO5 ", // extra space
+			" :[ANY]=EH4NIY",
+#else
 			"[AW]=AO5",
 			" :[ANY]=EH4NIY",
+#endif
+			// WIP end point for translator
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[A]^+#=EY5 ", // extra space
+#else
 			"[A]^+#=EY5",
+#endif
 			"#:[ALLY]=ULIY",
 			" [AL]#=UL",
 			"[AGAIN]=AXGEH4N",
 			"#:[AG]E=IHJ",
 			"[A]^%=EY",
 			"[A]^+:#=AE",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" :[A]^+ =EY4 ", // extra space
+#else
 			" :[A]^+ =EY4",
+#endif
 			" [ARR]=AXR",
 			"[ARR]=AE4R",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[AR] =AA5R",
+			"[AR] =ER",
+#else
 			" ^[AR] =AA5R",
+#endif
 			"[AR]=AA5R",
 			"[AIR]=EH4R",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[AI]=EY4 ", // extra space
+			"[AY]=EY5 ", // extra space
+			"[AU]=AO4 ", // extra space
+#else
 			"[AI]=EY4",
 			"[AY]=EY5",
 			"[AU]=AO4",
+#endif
 			"#:[AL] =UL",
 			"#:[ALS] =ULZ",
 			"[ALK]=AO4K",
@@ -1319,52 +1460,95 @@ int main(int argc, char **argv)
 			"[ABLE]=AXBUL",
 			"[A]VO=EY4",
 			"[ANG]+=EY4NJ",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [AMIGA]=AHMIY5GAH",
+#endif
 			"[ATARI]=AHTAA4RIY",
 			"[A]TOM=AE",
 			"[A]TTI=AE",
 			" [AT] =AET",
 			" [A]T=AH",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[A]A=", // remove double characters (if this is the first one in a chain...)
+#endif
 			"[A]=AE",
 		};
 
 		const char* const brule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[B]: = BIY4 ",
+#else
 			" [B] =BIY4",
+#endif
 			" [BE]^#=BIH",
 			"[BEING]=BIY4IHNX",
 			" [BOTH] =BOW4TH",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [BY] =BAY",
+			" [BUT] =BAHT",
+			" [BEEN] =BIHN",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [BUS]#=BIH4Z ", // extra space
+#else
 			" [BUS]#=BIH4Z",
+#endif
 			"[BREAK]=BREY5K",
 			"[BUIL]=BIH4L",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"B[B]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[B]=B",
 		};
 
 		const char* const crule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[C]: = SIY4 ",
+#else
 			" [C] =SIY4",
+#endif
 			" [CH]^=K",
 			"^E[CH]=K",
 			"[CHA]R#=KEH5",
 			"[CH]=CH",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" S[CI]#=SAY4 ", // extra space
+#else
 			" S[CI]#=SAY4",
+#endif
 			"[CI]A=SH",
 			"[CI]O=SH",
 			"[CI]EN=SH",
 			"[CITY]=SIHTIY",
 			"[C]+=S",
 			"[CK]=K",
-#ifdef C64_ADDED_RULES
+#if ((RULES_VERSION == RULES_C64) || defined(C64_ADDED_RULES))
 			"[COMMODORE]=KAA4MAHDOHR",
 #endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[COM]%=KAHM",
+#else
 			"[COM]=KAHM",
+#endif
 			"[CUIT]=KIHT",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[CREA]^+=KRIYEY4",
+			"[CC]=CH",
+#else
 			"[CREA]=KRIYEY",
+#endif
 			"[C]=K",
 		};
 
 		const char* const drule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[D]: = DIY4 ",
+#else
 			" [D] =DIY4",
+#endif
 			" [DR.] =DAA4KTER",
 			"#:[DED] =DIHD",
 			".E[D] =D",
@@ -1376,26 +1560,58 @@ int main(int argc, char **argv)
 			"[DOING]=DUW4IHNX",
 			" [DOW]=DAW",
 			"#[DU]A=JUW",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"#[DU]^#=JAX ", // extra space
+#else
 			"#[DU]^#=JAX",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"D[D]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[D]=D",
 		};
 
 		const char* const erule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [E] = IY4 ",
+#else
 			" [E] =IYIY4",
+#endif
 			"#:[E] =",
 			"':^[E] =",
 			" :[E] =IY",
 			"#[ED] =D",
 			"#:[E]D =",
 			"[EV]ER=EH4V",
+#if (RULES_VERSION >= RULES_MACTALK) // these added rules seem like they could be done better using the & suffix rule symbol, but probably can't be...
+			"#:[ERED] =ERD",
+			"#:[ERING]=ERIHNX",
+			"#:[EN] =EHN",
+			"#:[ENED] =EHND",
+			"#:[ENESS] =NEHS",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[E]^%=IY4 ", // extra space
+#else
 			"[E]^%=IY4",
+#endif
 			"[ERI]#=IY4RIY",
 			"[ERI]=EH4RIH",
 			"#:[ER]#=ER",
 			"[ERROR]=EH4ROHR",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[ERAS]E=IHREY5S",
+#elif ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[ERASE]=IHREY5S ", // extra space
+#else
 			"[ERASE]=IHREY5S",
+#endif
 			"[ER]#=EHR",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"#:[ER] =ER",
+			"#:[ERS] =ERZ",
+#endif
 			"[ER]=ER",
 			" [EVEN]=IYVEHN",
 			"#:[E]W=",
@@ -1407,43 +1623,86 @@ int main(int argc, char **argv)
 			"#:[ELY] =LIY",
 			"#:[EMENT]=MEHNT",
 			"[EFUL]=FUHL",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[EE]=IY4 ", // extra space
+#else
 			"[EE]=IY4",
+#endif
 			"[EARN]=ER5N",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [EAR]^=ER5 ", // extra space
+#else
 			" [EAR]^=ER5",
+#endif
 			"[EAD]=EHD",
 			"#:[EA] =IYAX",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[EA]SU=EH5 ", // extra space
+			"[EA]=IY5 ", // extra space
+			"[EIGH]=EY4 ", // extra space
+			"[EI]=IY4 ", // extra space
+			" [EYE]=AY4 ", // extra space
+#else
 			"[EA]SU=EH5",
 			"[EA]=IY5",
 			"[EIGH]=EY4",
 			"[EI]=IY4",
 			" [EYE]=AY4",
+#endif
 			"[EY]=IY",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[EU]=YUW5 ", // extra space
+#else
 			"[EU]=YUW5",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[EQUAL]=IY5KWUL",
+#else
 			"[EQUAL]=IY4KWUL",
+#endif
 			"[E]=EH",
 		};
 
 		const char* const frule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[F]: = EH4F ",
+			" [FOR] =FOHR",
+			" [FROM] =FRAHM",
+#else
 			" [F] =EH4F",
+#endif
 			"[FUL]=FUHL",
 			"[FRIEND]=FREH5ND",
 			"[FATHER]=FAA4DHER",
-			"[F]F=",
+			"[F]F=", // remove double characters (if this is the first one in a chain...)
 			"[F]=F",
 		};
 
 		const char* const grule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[G]: = JIY4 ",
+#else
 			" [G] =JIY4",
+#endif
 			"[GIV]=GIH5V",
 			" [G]I^=G",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[GE]T=GEH5 ", // extra space
+			"SU[GGES]=GJEH4S ", // extra space
+#else
 			"[GE]T=GEH5",
 			"SU[GGES]=GJEH4S",
-			"[GG]=G",
+#endif
+			"[GG]=G", // compress double characters to one (if there are two together)
 			" B#[G]=G",
 			"[G]+=J",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[GREAT]=GREY4T ", // extra space
+#else
 			"[GREAT]=GREY4T",
+#endif
 			"[GON]E=GAO5N",
 			"#[GH]=",
 			" [GN]=N",
@@ -1452,8 +1711,15 @@ int main(int argc, char **argv)
 
 		const char* const hrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[H]: = EY4CH ",
+			" [HAV]=/HAEV",
+			" [HAS] =/HAEZ",
+			" [HAD] =/HAED",
+#else
 			" [H] =EY4CH",
 			" [HAV]=/HAE6V",
+#endif
 			" [HERE]=/HIYR",
 			" [HOUR]=AW5ER",
 			"[HOW]=/HAW",
@@ -1463,11 +1729,31 @@ int main(int argc, char **argv)
 
 		const char* const irule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [IN] =IHN",
+			" [IBM] =AY5BIYEH5M",
+			" [IN]=IH4N",
+			"#:[I]NG=IH",
+			" [IS] =IHZ",
+			" [IF] =IHF",
+			" [INTO] =IH3NTUW",
+#else
 			" [IN]=IHN",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [I] = AY4 ",
+#elif ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [I] =AY4 ", // extra space; unlike the others, this one might not be a bug
+#else
 			" [I] =AY4",
+#endif
 			"[I] =AY",
 			"[IN]D=AY5N",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"SEM[I]=IY ", // extra space
+#else
 			"SEM[I]=IY",
+#endif
 			" ANT[I]=AY",
 			"[IER]=IYER",
 			"#:R[IED] =IYD",
@@ -1475,49 +1761,107 @@ int main(int argc, char **argv)
 			"[IEN]=IYEHN",
 			"[IE]T=AY4EH",
 			"[I']=AY5",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" :[I]^%=AY5 ", // extra space
+#else
 			" :[I]^%=AY5",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[I]%=AY5",
+#else
 			" :[IE] =AY4",
+#endif
 			"[I]%=IY",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[IE]=IY4 ", // extra space
+#else
 			"[IE]=IY4",
+#endif
 			" [IDEA]=AYDIY5AH",
 			"[I]^+:#=IH",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"#:[I]^AL=IH",
+#endif
 			"[IR]#=AYR",
 			"[IZ]%=AYZ",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[IS]%=AY4Z",
+			"[I]D%=AY4",
+			"#:[ITY] =IHTIY",
+#else
 			"[IS]%=AYZ",
+#endif
 			"I^[I]^#=IH",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"+^[I]^+=AY ", // extra space
+#else
 			"+^[I]^+=AY",
+#endif
 			"#:^[I]^+=IH",
+#ifdef NEW_RULE_UIC
+			"^U[I]C=", // (. or ^ ?) removes the silent I in the words "JUICE" and "SLUICE"
+#endif
 			"[I]^+=AY",
 			"[IR]=ER",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[IGH]=AY4 ", // extra space
+			"[ILD]=AY5LD ", // extra space
+#else
 			"[IGH]=AY4",
 			"[ILD]=AY5LD",
+#endif
 			" [IGN]=IHGN",
 			"[IGN] =AY4N",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[IGN]^=AY4N ", // extra space
+#else
 			"[IGN]^=AY4N",
+#endif
 			"[IGN]%=AY4N",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"#:[IC] = IHK",
+			"[ICRO]=AY5KROW",
+#else
 			"[ICRO]=AY4KROH",
+#endif
 			"[IQUE]=IY4K",
 			"[I]=IH",
 		};
 
 		const char* const jrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[J]: = JEY4 ",
+			"J[J]=", // remove double characters
+#else
 			" [J] =JEY4",
+#endif
 			"[J]=J",
 		};
 
 		const char* const krule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[K]: = KEY4 ",
+#else
 			" [K] =KEY4",
+#endif
 			" [K]N=",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"K[K]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[K]=K",
 		};
 
 		const char* const lrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[L]: = EH4L ",
+#else
 			" [L] =EH4L",
+#endif
 			"[LO]C#=LOW",
-			"L[L]=",
+			"L[L]=", // remove double characters (if this is the second one in a chain...)
 			"#:^[L]%=UL",
 			"[LEAD]=LIYD",
 			" [LAUGH]=LAE4F",
@@ -1526,75 +1870,162 @@ int main(int argc, char **argv)
 
 		const char* const mrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[M]: = EH4M ",
+#else
 			" [M] =EH4M",
+#endif
 			" [MR.] =MIH4STER",
 			" [MS.]=MIH5Z",
 			" [MRS.] =MIH4SIXZ",
 			"[MOV]=MUW4V",
 			"[MACHIN]=MAHSHIY5N",
-			"M[M]=",
+			"M[M]=", // remove double characters (if this is the second one in a chain...)
 			"[M]=M",
 		};
 
 		const char* const nrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[N]: = EH4N ",
+#else
 			" [N] =EH4N",
+#endif
 			"E[NG]+=NJ",
 			"[NG]R=NXG",
 			"[NG]#=NXG",
 			"[NGL]%=NXGUL",
 			"[NG]=NX",
 			"[NK]=NXK",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [NOW] =NAW4 ", // extra space
+#else
 			" [NOW] =NAW4",
-			"N[N]=",
+#endif
+			"N[N]=", // remove double characters (if this is the second one in a chain...)
 			"[NON]E=NAH4N",
 			"[N]=N",
 		};
 
 		const char* const orule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [O] = OW4 ",
+#else
 			" [O] =OH4W",
+#endif
 			"[OF] =AHV",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [ON] =AAN",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [OH] =OW5 ", // extra space
+#else
 			" [OH] =OW5",
+#endif
 			"[OROUGH]=ER4OW",
-			"#:[OR] =ER",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [OR] =OHR",
+			"[OR] =ER",
+#else
+			"#:[OR] =ER", // ?
+#endif
 			"#:[ORS] =ERZ",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[OR]=OHR",
+#else
 			"[OR]=AOR",
+#endif
 			" [ONE]=WAHN",
 			"#[ONE] =WAHN",
 			"[OW]=OW",
 			" [OVER]=OW5VER",
 			"PR[O]V=UW4",
 			"[OV]=AH4V",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[O]^%=OW5 ", // extra space
+#else
 			"[O]^%=OW5",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[O]^EN=OW4",
+#else
 			"[O]^EN=OW",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[O]^I#=OW5 ", // extra space
+#else
 			"[O]^I#=OW5",
+#endif
 			"[OL]D=OW4L",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OUGHT]=AO5T ", // extra space
+#else
 			"[OUGHT]=AO5T",
+#endif
 			"[OUGH]=AH5F",
 			" [OU]=AW",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"H[OU]S#=AW4 ", // extra space
+#else
 			"H[OU]S#=AW4",
+#endif
 			"[OUS]=AXS",
 			"[OUR]=OHR",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OULD]=UH5D ", // extra space
+#else
 			"[OULD]=UH5D",
-			"[OU]^L=AH5",
+#endif
+			// this next rule is supposed to be "^[OU]^L=AH5" but this rule was missing the leading ^ in the IEEE version of the NRL paper due to a printing error (but is correct in the original NRL paper), and the error seems to have propagated to all official versions of RECITER as well. It is fixed in MACTALK and later.
+#if ((RULES_VERSION >= RULES_MACTALK) || defined(FIX_IEEE_ERROR))
+			"^[OU]^L=AH5",
+#elif ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OU]^L=AH5 ", // extra space, and mistake, see above
+#else
+			"[OU]^L=AH5", // mistake, see above
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OUP]=UW5P ", // extra space
+#else
 			"[OUP]=UW5P",
+#endif
 			"[OU]=AW",
 			"[OY]=OY",
 			"[OING]=OW4IHNX",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OI]=OY5 ", // extra space
+#else
 			"[OI]=OY5",
-			"[OOR]=OH5R",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[OOR]=UH5R",
+#else
+			"[OOR]=OH5R", // unclear whether this is a mistake or not?
+#endif
 			"[OOK]=UH5K",
 			"F[OOD]=UW5D",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"L[OOD]=AH5D ", // extra space
+#else
 			"L[OOD]=AH5D",
+#endif
 			"M[OOD]=UW5D",
 			"[OOD]=UH5D",
 			"F[OOT]=UH5T",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OO]=UW5 ", // extra space
+#else
 			"[OO]=UW5",
+#endif
 			"[O']=OH",
 			"[O]E=OW",
 			"[O] =OW",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[OA]=OW4 ", // extra space
+#else
 			"[OA]=OW4",
+#endif
 			" [ONLY]=OW4NLIY",
 			" [ONCE]=WAH4NS",
 			"[ON'T]=OW4NT",
@@ -1602,25 +2033,28 @@ int main(int argc, char **argv)
 			"[O]NG=AO",
 			" :^[O]N=AH",
 			"I[ON]=UN",
-#ifdef C64_RULES_BUGS
-			// missing a space before =
-			"#:[ON]=UN",
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			"#:[ON]=UN", // missing a space before =
 #else
 			"#:[ON] =UN",
 #endif
 			"#^[ON]=UN",
-#ifdef C64_RULES_BUGS
-			// missing a space before =
-			"[O]ST=OW",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"FR[O]ST=AO4",
+			"L[O]ST=AO4",
+			"C[O]ST=AO4",
+			"[O]ST%=OW4",
+			"[O]ST =OW5",
+#elif ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			"[O]ST=OW", // missing a space before =
 #else
 			"[O]ST =OW",
 #endif
 			"[OF]^=AO4F",
 			"[OTHER]=AH5DHER",
 			"R[O]B=RAA",
-#ifdef APPLE_RULES_VARIANT
-			// is this to make "PRODOS" pronounced slightly better? or just a transcription mistake?
-			"PR[O]:#=ROW5",
+#if (RULES_VERSION >= RULES_APPLE)
+			"PR[O]:#=ROW5", // This seems like an intentional change to make "PRODOS" pronounced slightly better
 #else
 			"^R[O]:#=OW5",
 #endif
@@ -1631,13 +2065,22 @@ int main(int argc, char **argv)
 
 		const char* const prule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[P]: = PIY4 ",
+#else
 			" [P] =PIY4",
+#endif
 			"[PH]=F",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[PEOPL]=PIY5PUL ", // extra space
+			"[POW]=PAW4 ", // extra space
+#else
 			"[PEOPL]=PIY5PUL",
 			"[POW]=PAW4",
+#endif
 			"[PUT] =PUHT",
-			"[P]P=",
-#ifdef C64_RULES_BUGS
+			"[P]P=", // remove double characters (if this is the first one in a chain...)
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
 			// missing the preceding space, to force these to only start at the beginning of a word
 			"[P]S=",
 			"[P]N=",
@@ -1653,28 +2096,42 @@ int main(int argc, char **argv)
 
 		const char* const qrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[Q]: = KYUW4 ",
+#else
 			" [Q] =KYUW4",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[QUAR]=KWOH5R ", // extra space
+#else
 			"[QUAR]=KWOH5R",
+#endif
 			"[QU]=KW",
 			"[Q]=K",
 		};
 
 		const char* const rrule_eng[] =
 		{
-#ifdef APPLE_RULES_VARIANT
-			// the apple port has a different stress marker for this rule
-			" [R] =AA4R",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[R]: = AA4R ",
+#elif (RULES_VERSION == RULES_APPLE)
+			" [R] =AA4R", // the apple version and onward has a different stress marker for this rule
 #else
 			" [R] =AA5R",
 #endif
 			" [RE]^#=RIY",
-			"[R]R=",
+			"[R]R=", // remove double characters (if this is the first one in a chain...)
 			"[R]=R",
 		};
 
 		const char* const srule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[S]: = EH4S ",
+			" [SO]=SOW",
+#else
 			" [S] =EH4S",
+#endif
 			"[SH]=SH",
 			"#[SION]=ZHUN",
 			"[SOME]=SAHM",
@@ -1682,7 +2139,7 @@ int main(int argc, char **argv)
 			"[SUR]#=SHER",
 			"#[SU]#=ZHUW",
 			"#[SSU]#=SHUW",
-#ifdef C64_RULES_BUGS
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
 			// missing a space before =
 			"#[SED]=ZD",
 #else
@@ -1691,9 +2148,12 @@ int main(int argc, char **argv)
 			"#[S]#=Z",
 			"[SAID]=SEHD",
 			"^[SION]=SHUN",
-			"[S]S=",
+			"[S]S=", // remove double characters (if this is the first one in a chain...)
 			".[S] =Z",
 			"#:.E[S] =Z",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"#:^##[S] =Z",
+#endif
 			"#:^#[S] =S",
 			"U[S] =S",
 			" :#[S] =Z",
@@ -1701,9 +2161,8 @@ int main(int argc, char **argv)
 			" [SCH]=SK",
 			"[S]C+=",
 			"#[SM]=ZUM",
-#ifdef C64_RULES_BUGS
-			// this is a copy-paste error, and screws up the pronunciation of the word "wasn't"
-			"#[SN]'=ZUM",
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			"#[SN]'=ZUM", // this is a copy-paste error, and screws up the pronunciation of the words "doesn't", "wasn't", etc.
 #else
 			"#[SN]'=ZUN",
 #endif
@@ -1713,7 +2172,11 @@ int main(int argc, char **argv)
 
 		const char* const trule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[T]: = TIY4 ",
+#else
 			" [T] =TIY4",
+#endif
 			" [THE] #=DHIY",
 			" [THE] =DHAX",
 			"[TO] =TUX",
@@ -1724,25 +2187,31 @@ int main(int argc, char **argv)
 			"[THER]=DHER",
 			"[THEIR]=DHEHR",
 			" [THAN] =DHAEN",
-#ifdef C64_RULES_BUGS
-			// this is a copy-paste error, and screws up the pronunciation of the word "them"
-			" [THEM] =DHAEN",
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			" [THEM] =DHAEN", // this is a copy-paste error, and screws up the pronunciation of the word "them"
 #else
 			" [THEM] =DHEHM",
 #endif
 			"[THESE] =DHIYZ",
 			" [THEN]=DHEHN",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[THROUGH]=THRUW4 ", // extra space
+#else
 			"[THROUGH]=THRUW4",
+#endif
 			"[THOSE]=DHOHZ",
 			"[THOUGH] =DHOW",
 			"[TODAY]=TUXDEY",
 			"[TOMO]RROW=TUMAA5",
 			"[TO]TAL=TOW5",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			" [THUS]=DHAH4S ", // extra space
+#else
 			" [THUS]=DHAH4S",
+#endif
 			"[TH]=TH",
-#ifdef C64_RULES_BUGS
-			// missing a space before =
-			"#:[TED]=TIXD",
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			"#:[TED]=TIXD", // missing a space before =
 #else
 			"#:[TED] =TIXD",
 #endif
@@ -1753,46 +2222,81 @@ int main(int argc, char **argv)
 			"[TUR]#=CHER",
 			"[TU]A=CHUW",
 			" [TWO]=TUW",
-#ifdef APPLE_RULES_VARIANT
-			// the apple version of this rule drops the space before the =, and adds another rule below specific to starting with 'F' for the word '[s]often'
+#if (RULES_VERSION >= RULES_APPLE)
+			// the apple version and later of this rule drops the space before the =, and adds another rule below specific to starting with 'F' for the word '[s]often'
 			"&[T]EN=",
 			"F[T]EN=",
 #else
 			"&[T]EN =",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[T]T=", // remove double characters (if this is the first one in a chain...)
 #endif
 			"[T]=T",
 		};
 
 		const char* const urule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [U] = YUW4 ",
+#else
 			" [U] =YUW4",
+#endif
 			" [UN]I=YUWN",
 			" [UN]=AHN",
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [UPON]=AXPAA3N",
+#else
 			" [UPON]=AXPAON",
+#endif
 			"@[UR]#=UH4R",
 			"[UR]#=YUH4R",
 			"[UR]=ER",
 			"[U]^ =AH",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[U]^^=AH5 ", // extra space
+			"[UY]=AY5 ", // extra space
+#else
 			"[U]^^=AH5",
 			"[UY]=AY5",
+#endif
 			" G[U]#=",
 			"G[U]%=",
 			"G[U]#=W",
 			"#N[U]=YUW",
 			"@[U]=UW",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"U[U]=", // note that mactalk actually has a broken rule here of "U[U]" with no equals after it. this should remove the second 'U' in a series of multiple 'U's
+			" [USA] =YUW5EHSEY2",
+#endif
 			"[U]=YUW",
 		};
 
 		const char* const vrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[V]: = VIY4 ",
+#else
 			" [V] =VIY4",
+#endif
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"[VIEW]=VYUW5 ", // extra space
+#else
 			"[VIEW]=VYUW5",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"V[V]=", // note that mactalk actually has a broken rule here of "V[V]" with no equals after it. this should remove the second 'V' in a series of multiple 'V's
+#endif
 			"[V]=V",
 		};
 
 		const char* const wrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[W]: = DAH4BULYUW ",
+#else
 			" [W] =DAH4BULYUW",
+#endif
 			" [WERE]=WER",
 			"[WA]SH=WAA",
 			"[WA]ST=WEY",
@@ -1802,42 +2306,84 @@ int main(int argc, char **argv)
 			"[WHAT]=WHAHT",
 			"[WHOL]=/HOWL",
 			"[WHO]=/HUW",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[WH]=W",
+#else
 			"[WH]=WH",
+#endif
 			"[WAR]#=WEHR",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[WAR]=WAO5R",
+#else
 			"[WAR]=WAOR",
+#endif
 			"[WOR]^=WER",
 			"[WR]=R",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[WOM]A=WUH5M",
+			"[WOM]E=WIH5M",
+#else
 			"[WOM]A=WUHM",
 			"[WOM]E=WIHM",
+#endif
 			"[WEA]R=WEH",
 			"[WANT]=WAA5NT",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"ANS[WER]=ER ", // extra space
+#else
 			"ANS[WER]=ER",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			"W[W]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[W]=W",
 		};
 
 		const char* const xrule_eng[] =
 		{
-#ifdef C64_RULES_BUGS
-			// this is a typo and should be EH4KS to pronounce the letter properly
-			" [X] =EH4KR",
+#if (RULES_VERSION >= RULES_MACINTALK)
+			"?[X]?= BAY ",
+			"? [X] ?=BAY",
+#endif
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[X]: = EH4KS ",
+#elif ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
+			" [X] =EH4KR", // this is a typo and should be EH4KS to pronounce the letter properly
 #else
 			" [X] =EH4KS",
 #endif
+#if ((RULES_VERSION >= RULES_MACTALK) && (RULES_VERSION <= RULES_MACINTALKDEMO))
+			// Note in mactalk and macintalk 1.0(demo), the two 'by' rules appear here, but cannot EVER work since they get caught by the EH4KS rule above.
+			// This was fixed in macintalk 1.2 and onward by moving the rules above the EH4KS case.
+			"?[X]?= BAY ", // these rules cannot ever be hit due to a bug
+			"? [X] ?=BAY", // these rules cannot ever be hit due to a bug
+#endif
 			" [X]=Z",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"X[X]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[X]=KS",
 		};
 
 		const char* const yrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" [Y] = WAY4 ",
+#else
 			" [Y] =WAY4",
+#endif
 			"[YOUNG]=YAHNX",
 			" [YOUR]=YOHR",
 			" [YOU]=YUW",
 			" [YES]=YEHS",
 			" [Y]=Y",
 			"F[Y]=AY",
+#if ((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS))
+			"PS[YCH]=AYK ", // extra space
+#else
 			"PS[YCH]=AYK",
-#ifdef C64_RULES_BUGS
+#endif
+#if ((RULES_VERSION == RULES_C64) && defined(C64_RULES_BUGS))
 			// missing a space before =
 			"#:^[Y]=IY",
 #else
@@ -1848,60 +2394,172 @@ int main(int argc, char **argv)
 			" :[Y]#=AY",
 			" :[Y]^+:#=IH",
 			" :[Y]^#=AY",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"Y[Y]=", // remove double characters (if this is the second one in a chain...)
+#endif
 			"[Y]=IH",
 		};
 
 		const char* const zrule_eng[] =
 		{
+#if (RULES_VERSION >= RULES_MACTALK)
+			" :[Z]: = ZIY4 ",
+			"Z[Z]=", // remove double characters (if this is the second one in a chain...)
+#else
 			" [Z] =ZIY4",
+#endif
 			"[Z]=Z",
 		};
 
 		const char* const punct_num_rule_eng[] =
 		{
-			"[A]=",
+#if (RULES_VERSION < RULES_MACTALK)
+			"[A]=", // this is a broken rule and can never be hit, may have been left from debugging, and only exists in the 6502 versions
+#endif
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[ ]= ",
+			"[...]= THRUW ",
+			"[.]?= POY5NT ",
+			"[.] =.",
+			"[.]= ",
+#endif
 			"[!]=.",
+#if (((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS)) || (RULES_VERIONS >= RULES_MACTALK))
+			"[\"] =-AH5NKWOWT- ", // extra space... which became a feature later
+#else
 			"[\"] =-AH5NKWOWT-",
+#endif
 			"[\"]=KWOW4T-",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[#]= NAH4MBER ",
+			"C['S]=S",
+			"G['S]=Z",
+			"&['S]=IHZ",
+			".['S]=Z",
+			"#:&E['S]=IHZ",
+			"#:.E['S]=Z",
+			"#:^E['S]=S",
+			"#['S]=Z",
+			"['S]=S",
+			"['T]=T",
+			"['LL]=L",
+			"['D]=D",
+			"['M]=M",
+			"[$]= DAA4LER ",
+			"[%]= PERSEH4NT ",
+			"[&]= AEND ",
+#else
 			"[#]= NAH4MBER",
 			"[$]= DAA4LER",
 			"[%]= PERSEH4NT",
 			"[&]= AEND",
+#endif
 			"[']=",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[*]= AE4STERIHSK ",
+			"[+]= PLAH4S ",
+#else
 			"[*]= AE4STERIHSK",
 			"[+]= PLAH4S",
+#endif
 			"[,]=,",
 			" [-] =-",
 			"[-]=",
+#if (RULES_VERSION >= RULES_MACTALK)
+			"[/]= SLAE4SH ",
+#else
 			"[.]= POYNT",
 			"[/]= SLAE4SH",
+#endif
+
+			// *** begin digit rules; these are in their own table in mactalk and later
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[0]= ZIY4ROW ",
+#else
 			"[0]= ZIY4ROW",
+#endif
 			" [1ST]=FER4ST",
 			" [10TH]=TEH4NTH",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			" [10] = TEH4N ",
+			"[1]= WAH4N ",
+#else
 			"[1]= WAH4N",
+#endif
 			" [2ND]=SEH4KUND",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[2]= TUW4 ",
+#else
 			"[2]= TUW4",
+#endif
 			" [3RD]=THER4D",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[3]= THRIY4 ",
+			"[4]= FOH4R ",
+#else
 			"[3]= THRIY4",
 			"[4]= FOH4R",
+#endif
 			" [5TH]=FIH4FTH",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[5]= FAY4V ",
+#else
 			"[5]= FAY4V",
-#ifdef C64_ADDED_RULES
+#endif
+#if ((RULES_VERSION == RULES_C64) || defined(C64_ADDED_RULES))
 			" [64] =SIH4KSTIY FOHR",
 #endif
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[6]= SIH4KS ",
+			"[7]= SEH4VUN ",
+#else
 			"[6]= SIH4KS",
 			"[7]= SEH4VUN",
+#endif
 			" [8TH]=EY4TH",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[8]= EY4T ",
+			"[9]= NAY4N ",
+#else
 			"[8]= EY4T",
 			"[9]= NAY4N",
+#endif
+			// *** end digit rules
+
+#if (((RULES_VERSION == RULES_APPLE) && defined(APPLE_RULES_BUGS)) || (RULES_VERIONS >= RULES_MACTALK))
+			"[:]=. ", // extra space... which became a feature later
+#else
 			"[:]=.",
+#endif
 			"[;]=.",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[<]= LEH4S DHAEN ",
+			"[=]= IY4KWULZ ",
+			"[>]= GREY4TER DHAEN ",
+#else
 			"[<]= LEH4S DHAEN",
 			"[=]= IY4KWULZ",
 			"[>]= GREY4TER DHAEN",
+#endif
 			"[?]=.",
+#if (RULES_VERIONS >= RULES_MACTALK)
+			"[@]= AE6T ",
+			"[(]=,",
+			"[)]=,",
+			"[^]= KAE4RIHT ",
+			"[~]=NAA4T ",
+			"[\]= ",
+			"[[]= ",
+			"[{]= ",
+			"[}]= ",
+			"[|]=OH4R ",
+			"[_]= ",
+			"[`]= ",
+			"[]= ",
+#else
 			"[@]= AE6T",
 			"[^]= KAE4RIXT",
+#endif
 		};
 		sym_ruleset ruleset[RULES_TOTAL] =
 		{
