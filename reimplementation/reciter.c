@@ -431,7 +431,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == ' ') // space matches any non-letter
+				else if (rulechar == ' ') // space matches one non-letter
 				{
 					if (!isLetter(inpchar,c))
 					{
@@ -496,7 +496,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 #else
-				else if (rulechar == '#') // # matches any vowel
+				else if (rulechar == '#') // # matches one vowel
 				{
 					if (isVowel(inpchar,c))
 					{
@@ -511,7 +511,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 #endif
-				else if (rulechar == '.') // . matches any voiced consonant
+				else if (rulechar == '.') // . matches one voiced consonant
 				{
 					if (isVoiced(inpchar,c))
 					{
@@ -525,7 +525,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '&') // & matches any sibilant; note the special cases for CH and SH
+				else if (rulechar == '&') // & matches one sibilant; note the special cases for CH and SH
 				{
 					if (isSibil(inpchar,c))
 					{
@@ -557,7 +557,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '@') // @ matches any unvoiced affricate aka nonpalate; note special cases for TH, CH, SH
+				else if (rulechar == '@') // @ matches one unvoiced affricate aka nonpalate; note special cases for TH, CH, SH
 				{
 					if (isUaff(inpchar,c))
 					{
@@ -594,7 +594,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '^') // ^ matches any one consonant
+				else if (rulechar == '^') // ^ matches one consonant
 				{
 					if (isCons(inpchar,c))
 					{
@@ -608,7 +608,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '+') // + matches any front vowel: E, I or Y
+				else if (rulechar == '+') // + matches one front vowel: E, I or Y
 				{
 					if (isFront(inpchar,c))
 					{
@@ -705,7 +705,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 #endif
 #if (RULES_VERSION >= RULES_MACTALK)
 				// Mactalk and later has two extra rule characters: ? (single digit) and _ (zero or more digits)
-				else if (rulechar == '?') // ? matches any one digit
+				else if (rulechar == '?') // ? matches one digit
 				{
 					if (isDigit(inpchar,c))
 					{
@@ -765,7 +765,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == ' ') // space matches any non-letter
+				else if (rulechar == ' ') // space matches one non-letter
 				{
 					if (!isLetter(inpchar,c))
 					{
@@ -845,7 +845,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 					}
 				}
 #endif
-				else if (rulechar == '.') // . matches any voiced consonant
+				else if (rulechar == '.') // . matches one voiced consonant
 				{
 					if (isVoiced(inpchar,c))
 					{
@@ -859,7 +859,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '&') // & matches any sibilant;
+				else if (rulechar == '&') // & matches one sibilant;
 				// note the special cases for CH and SH which must be tested FIRST since 'C' and 'S' are themselves sibilants!
 				{
 					// the original code is buggy here, probably improperly copy-pasted from the prefix check code.
@@ -965,7 +965,7 @@ s32 processRule(const sym_ruleset const ruleset, const vec_char32* const input, 
 						fail = true;
 					}
 				}
-				else if (rulechar == '^') // ^ matches any single consonant
+				else if (rulechar == '^') // ^ matches one consonant
 				{
 					if (isCons(inpchar,c))
 					{
